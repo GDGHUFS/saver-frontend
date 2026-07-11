@@ -2,7 +2,7 @@
 
 이 저장소에서는 루트의 `openapi.json`과 사용자가 전달한 화면 요구사항을 바탕으로 포털 서비스의 프런트엔드를 개발한다.
 
-기본 화면 골격은 [GDGHUFS/saver-wireframe](https://github.com/GDGHUFS/saver-wireframe)을 따른다. 다만 이 프로젝트는 Codex가 구현을 주도하고 사용자가 리뷰하는 방식이므로, 단기적인 화면 완성보다 이후 변경과 검증이 쉬운 코드를 우선한다.
+기본 화면 골격은 [GDGHUFS/saver-wireframe](https://github.com/GDGHUFS/saver-wireframe)을 따른다. 다만 이 프로젝트는 Codex가 구현을 주도하고 사용자가 리뷰하는 방식이므로, 단기적인 화면 완성보다 이후 변경과 검증이 쉬운 코드를 우선한다. 또한 사용자는 openapi.json을 만드는 backend이므로 필요에 따라 backend에 관련한 요청이나 질문을 할 수 있다.
 
 ## 명세 우선순위
 
