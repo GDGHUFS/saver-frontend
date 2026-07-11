@@ -1,0 +1,35 @@
+# Saver Frontend
+
+Saver 포털 서비스의 Vue 3 프런트엔드입니다. 화면 및 개발 규칙은 `AGENTS.md`, backend API 계약은 `openapi.json`을 기준으로 합니다.
+
+## 로컬 실행
+
+Node.js와 npm이 필요합니다.
+
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+기본 backend 주소는 `.env.example`의 `VITE_API_BASE_URL`에서 확인할 수 있습니다. 환경에 맞게 `.env`에서 변경합니다.
+
+## 검증
+
+```bash
+npm run typecheck
+npm run test
+npm run build
+```
+
+## 디렉터리
+
+```text
+src/api/          HTTP client와 endpoint 모듈
+src/assets/       전역 스타일과 정적 자산
+src/components/   공통 UI 컴포넌트
+src/router/       애플리케이션 라우트
+src/types/        공통 도메인 타입
+src/views/        라우트 단위 페이지
+tests/            핵심 흐름과 공통 로직 테스트
+```
