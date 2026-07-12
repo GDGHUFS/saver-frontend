@@ -14,6 +14,13 @@ npm run dev
 
 기본 backend 주소는 `.env.example`의 `VITE_API_BASE_URL`에서 확인할 수 있습니다. 환경에 맞게 `.env`에서 변경합니다.
 
+## 카카오 OAuth callback
+
+카카오 개발자 콘솔에는 프런트엔드 주소가 아니라 backend의 로그인 callback인 `/redirect`와
+탈퇴 재인증 callback인 `/auth/withdraw/redirect`를 Redirect URI로 등록합니다. 프런트엔드는
+각 authorize endpoint로 브라우저를 이동시키고, backend가 callback 처리와 세션 쿠키 발급 또는
+계정 탈퇴를 마친 뒤 프런트엔드 루트로 다시 보내는 구조입니다.
+
 ## 검증
 
 ```bash

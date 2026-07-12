@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { apiClient } from '@/api/client'
+import AccountCard from '@/views/home/AccountCard.vue'
 
 const router = useRouter()
 const query = ref('')
@@ -12,53 +12,36 @@ interface ServiceSummary {
   title: string
 }
 
-interface ExternalService extends ServiceSummary {
-  href: string
-  kind: 'external'
-}
-
 interface InternalService extends ServiceSummary {
-  kind: 'internal'
   to: string
 }
 
-type Service = ExternalService | InternalService
+type Service = InternalService
 
 const services = computed<readonly Service[]>(() => [
   {
-    title: '카카오 로그인',
-    description: 'Saver 계정으로 서비스를 이용합니다.',
-    href: apiClient.getUrl('/authorize'),
-    kind: 'external',
-  },
-  {
     title: '날씨',
     description: '날씨 정보를 확인합니다.',
-    kind: 'internal',
     to: '/weather',
   },
   {
     title: '기념일',
     description: '월별 기념일과 공휴일을 확인합니다.',
-    kind: 'internal',
     to: '/special-days',
   },
   {
     title: '뉴스',
     description: '최신 소식을 모아 봅니다.',
-    kind: 'internal',
     to: '/news',
   },
   {
     title: '블로그',
     description: 'Saver 사용자의 글을 읽고 작성합니다.',
-    kind: 'internal',
     to: '/blog',
   },
   {
     title: '서비스 안내',
     description: '서비스 소개와 개인정보처리방침을 확인합니다.',
-    kind: 'internal',
     to: '/about',
   },
 ])
@@ -99,18 +82,11 @@ async function submitSearch(): Promise<void> {
   <section class="container-xl py-5" aria-labelledby="services-heading">
     <h2 id="services-heading" class="h4 fw-bold mb-4">서비스</h2>
     <div class="row g-3 g-lg-4">
+      <div class="col-12 col-md-6 col-lg-4">
+        <AccountCard />
+      </div>
       <div v-for="service in services" :key="service.title" class="col-12 col-md-6 col-lg-4">
-        <a
-          v-if="service.kind === 'external'"
-          class="service-card card h-100 text-decoration-none"
-          :href="service.href"
-        >
-          <span class="card-body p-4">
-            <strong class="d-block h5 text-body mb-2">{{ service.title }}</strong>
-            <span class="text-body-secondary">{{ service.description }}</span>
-          </span>
-        </a>
-        <RouterLink v-else class="service-card card h-100 text-decoration-none" :to="service.to">
+        <RouterLink class="service-card card h-100 text-decoration-none" :to="service.to">
           <span class="card-body p-4">
             <strong class="d-block h5 text-body mb-2">{{ service.title }}</strong>
             <span class="text-body-secondary">{{ service.description }}</span>
