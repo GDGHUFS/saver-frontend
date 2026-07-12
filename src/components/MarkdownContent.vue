@@ -52,9 +52,32 @@ const renderedMarkdown = computed(() => renderMarkdown(props.source))
 }
 
 .markdown-content :deep(blockquote) {
-  padding-left: 1rem;
+  margin-block: 1.25rem;
+  padding: 0.75rem 1rem;
   color: var(--bs-secondary-color);
   border-left: 0.25rem solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+}
+
+.markdown-content :deep(blockquote > :last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-content :deep(.contains-task-list) {
+  padding-left: 0;
+  list-style: none;
+}
+
+.markdown-content :deep(.task-list-item) {
+  list-style: none;
+}
+
+.markdown-content :deep(.task-list-item-checkbox) {
+  width: 1rem;
+  height: 1rem;
+  margin: 0 0.5rem 0.2rem 0;
+  vertical-align: middle;
+  accent-color: var(--bs-primary);
 }
 
 .markdown-content :deep(img) {
@@ -73,5 +96,9 @@ const renderedMarkdown = computed(() => renderMarkdown(props.source))
 .markdown-content :deep(td) {
   padding: 0.5rem;
   border: 1px solid var(--bs-border-color);
+}
+
+.markdown-content :deep(th) {
+  background: var(--bs-tertiary-bg);
 }
 </style>

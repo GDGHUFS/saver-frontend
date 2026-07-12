@@ -246,7 +246,8 @@ onBeforeUnmount(() => {
             aria-describedby="blog-content-help"
           ></textarea>
           <div id="blog-content-help" class="form-text">
-            Markdown 서식을 사용할 수 있습니다. 입력한 HTML은 실행되지 않고 일반 텍스트로 표시됩니다.
+            GFM(GitHub Flavored Markdown)의 표, 작업 목록, 취소선과 인용문을 사용할 수 있습니다.
+            입력한 HTML은 실행되지 않고 일반 텍스트로 표시됩니다.
           </div>
         </div>
 
