@@ -5,6 +5,7 @@ import { authApi, type AuthUser } from '@/api/auth'
 import { ApiHttpError } from '@/api/client'
 import type { AsyncStatus } from '@/types/async-state'
 import { navigateToExternal } from '@/utils/navigation'
+import { reportAccountFailure } from '@/views/home/accountDiagnostics'
 
 const status = ref<AsyncStatus>('loading')
 const user = ref<AuthUser | null>(null)
@@ -47,6 +48,10 @@ async function loadCurrentUser(): Promise<void> {
       return
     }
 
+    reportAccountFailure(
+      { method: 'GET', operation: 'load-current-user', path: '/auth/me' },
+      error,
+    )
     status.value = 'error'
   } finally {
     if (requestSequence === loadSequence) {
@@ -69,7 +74,8 @@ async function logout(): Promise<void> {
     user.value = null
     status.value = 'empty'
     actionMessage.value = '로그아웃되었습니다.'
-  } catch {
+  } catch (error: unknown) {
+    reportAccountFailure({ method: 'POST', operation: 'logout', path: '/auth/logout' }, error)
     actionError.value = '로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.'
   } finally {
     isLoggingOut.value = false

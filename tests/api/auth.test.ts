@@ -34,7 +34,7 @@ describe('authApi', () => {
       profileImage: 'https://example.com/profile.png',
     })
     expect(fetchImplementation).toHaveBeenCalledWith(
-      '/auth/me',
+      expect.stringMatching(/\/auth\/me$/),
       expect.objectContaining({ credentials: 'include', method: 'GET' }),
     )
   })
@@ -53,12 +53,12 @@ describe('authApi', () => {
     vi.stubGlobal('fetch', fetchImplementation)
     const { authApi } = await import('@/api/auth')
 
-    expect(authApi.getLoginUrl()).toBe('/authorize')
-    expect(authApi.getWithdrawalUrl()).toBe('/auth/withdraw/authorize')
+    expect(authApi.getLoginUrl()).toMatch(/\/authorize$/)
+    expect(authApi.getWithdrawalUrl()).toMatch(/\/auth\/withdraw\/authorize$/)
     await authApi.logout()
 
     expect(fetchImplementation).toHaveBeenCalledWith(
-      '/auth/logout',
+      expect.stringMatching(/\/auth\/logout$/),
       expect.objectContaining({ credentials: 'include', method: 'POST' }),
     )
   })

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiHttpError } from '@/api/client'
+import { ApiHttpError, ApiNetworkError } from '@/api/client'
 import AccountCard from '@/views/home/AccountCard.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -38,6 +38,7 @@ describe('AccountCard', () => {
     mocks.getWithdrawalUrl.mockClear()
     mocks.logout.mockReset()
     mocks.navigateToExternal.mockReset()
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
 
   // 세션 확인 중에는 이전 사용자나 로그인 버튼을 성급하게 노출하지 않는지 보호한다.
@@ -57,14 +58,35 @@ describe('AccountCard', () => {
 
     const loginLink = await screen.findByRole('link', { name: '카카오로 로그인' })
     expect(loginLink).toHaveAttribute('href', 'https://api.example.com/authorize')
+    expect(console.error).not.toHaveBeenCalled()
   })
 
   it('세션 확인 실패를 로그인 필요 상태와 구분하고 재시도한다', async () => {
-    mocks.getCurrentUser.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(user)
+    mocks.getCurrentUser
+      .mockRejectedValueOnce(
+        new ApiNetworkError('API request failed before receiving a response', {
+          cause: new TypeError('Failed to fetch'),
+        }),
+      )
+      .mockResolvedValueOnce(user)
 
     render(AccountCard)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('로그인 상태를 확인하지 못했습니다.')
+    expect(console.error).toHaveBeenCalledWith(
+      '[Saver] 사용자 계정 요청 실패',
+      expect.objectContaining({
+        component: 'AccountCard',
+        error: {
+          cause: { message: 'Failed to fetch', name: 'TypeError' },
+          kind: 'network',
+          message: 'API request failed before receiving a response',
+          name: 'ApiNetworkError',
+        },
+        operation: 'load-current-user',
+        request: { method: 'GET', path: '/auth/me' },
+      }),
+    )
     await fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
 
     expect(await screen.findByText(user.nickname)).toBeInTheDocument()
@@ -97,6 +119,13 @@ describe('AccountCard', () => {
     await fireEvent.click(screen.getByRole('button', { name: '로그아웃' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다.')
+    expect(console.error).toHaveBeenCalledWith(
+      '[Saver] 사용자 계정 요청 실패',
+      expect.objectContaining({
+        operation: 'logout',
+        request: { method: 'POST', path: '/auth/logout' },
+      }),
+    )
     expect(screen.getByText(user.nickname)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '로그아웃' })).toBeEnabled()
   })
