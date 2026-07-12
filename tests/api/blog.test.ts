@@ -84,6 +84,19 @@ describe('blogApi', () => {
     )
   })
 
+  it('작성 성공 응답에 Location 헤더가 없으면 생성 주소 오류로 구분한다', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 201 })),
+    )
+    const { blogApi } = await import('@/api/blog')
+
+    await expect(blogApi.create({ title: '제목', content: '본문' })).rejects.toMatchObject({
+      cause: { name: 'BlogCreationLocationError' },
+      name: 'ApiResponseError',
+    })
+  })
+
   it('수정은 PUT으로 전체 본문을 보내고 삭제는 DELETE로 요청한다', async () => {
     const fetchImplementation = vi
       .fn<typeof fetch>()

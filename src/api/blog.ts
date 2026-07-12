@@ -30,6 +30,13 @@ export interface CreatedBlog {
   location: string
 }
 
+export class BlogCreationLocationError extends Error {
+  constructor() {
+    super('Location header must contain the created blog path')
+    this.name = 'BlogCreationLocationError'
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -100,7 +107,7 @@ function decodeCreatedBlog(_value: unknown, response: Response): CreatedBlog {
   const location = response.headers.get('Location')
   const match = location?.match(/^\/blog\/([1-9][0-9]*)$/)
   if (location === null || match === null || match === undefined) {
-    throw new Error('Location header must contain the created blog path')
+    throw new BlogCreationLocationError()
   }
 
   const id = Number(match[1])

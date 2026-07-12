@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ApiHttpError } from '@/api/client'
 import BlogDetailView from '@/views/blog/BlogDetailView.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -125,5 +126,16 @@ describe('BlogDetailView', () => {
 
     await waitFor(() => expect(router.currentRoute.value.name).toBe('blog'))
     expect(mocks.delete).toHaveBeenCalledWith(7)
+  })
+
+  it('없는 글을 일반 네트워크 오류와 구분해 안내한다', async () => {
+    mocks.getById.mockRejectedValue(new ApiHttpError(404, undefined))
+    const router = createDetailRouter()
+    await router.push('/blog/404')
+    await router.isReady()
+
+    render(BlogDetailView, { global: { plugins: [router] } })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('블로그 글을 찾을 수 없습니다.')
   })
 })

@@ -21,6 +21,10 @@ npm run dev
 각 authorize endpoint로 브라우저를 이동시키고, backend가 callback 처리와 세션 쿠키 발급 또는
 계정 탈퇴를 마친 뒤 프런트엔드 루트로 다시 보내는 구조입니다.
 
+credential CORS를 사용하는 환경에서 backend는 프런트엔드 Origin을 정확히 허용해야 합니다.
+또한 `POST /blog/`의 생성 결과는 `Location` 응답 헤더로 전달되므로 브라우저에서 읽을 수 있게
+`Access-Control-Expose-Headers: Location`을 설정해야 합니다.
+
 ## 검증
 
 ```bash

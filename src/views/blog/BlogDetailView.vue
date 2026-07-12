@@ -23,6 +23,7 @@ const isDeleting = ref(false)
 const deleteError = ref('')
 const deleteTrigger = ref<HTMLButtonElement | null>(null)
 const deleteCancelButton = ref<HTMLButtonElement | null>(null)
+const deleteConfirmButton = ref<HTMLButtonElement | null>(null)
 let sequence = 0
 let controller: AbortController | null = null
 
@@ -90,6 +91,16 @@ function closeDeleteModal(): void {
 
   isDeleteModalOpen.value = false
   void nextTick(() => deleteTrigger.value?.focus())
+}
+
+function keepFocusInDeleteModal(event: KeyboardEvent): void {
+  if (event.shiftKey && document.activeElement === deleteCancelButton.value) {
+    event.preventDefault()
+    deleteConfirmButton.value?.focus()
+  } else if (!event.shiftKey && document.activeElement === deleteConfirmButton.value) {
+    event.preventDefault()
+    deleteCancelButton.value?.focus()
+  }
 }
 
 async function deletePost(): Promise<void> {
@@ -195,6 +206,7 @@ onBeforeUnmount(() => {
         aria-labelledby="delete-blog-title"
         aria-describedby="delete-blog-description"
         @keydown.esc="closeDeleteModal"
+        @keydown.tab="keepFocusInDeleteModal"
       >
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
@@ -218,6 +230,7 @@ onBeforeUnmount(() => {
                 취소
               </button>
               <button
+                ref="deleteConfirmButton"
                 class="btn btn-danger"
                 type="button"
                 :disabled="isDeleting"

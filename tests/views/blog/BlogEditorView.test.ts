@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiHttpError } from '@/api/client'
+import { BlogCreationLocationError } from '@/api/blog'
+import { ApiHttpError, ApiResponseError } from '@/api/client'
 import BlogEditorView from '@/views/blog/BlogEditorView.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/api/blog', () => ({
+  BlogCreationLocationError: class BlogCreationLocationError extends Error {},
   blogApi: {
     create: mocks.create,
     getById: mocks.getById,
@@ -131,5 +133,27 @@ describe('BlogEditorView', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('로그인이 필요합니다.')
     expect(screen.getByRole('link', { name: '로그인하러 가기' })).toHaveAttribute('href', '/')
+  })
+
+  it('생성 성공 후 Location을 읽지 못하면 중복 작성을 막고 목록 동선을 제공한다', async () => {
+    mocks.create.mockRejectedValue(
+      new ApiResponseError('API response does not match the expected schema', {
+        cause: new BlogCreationLocationError(),
+      }),
+    )
+    const router = createEditorRouter()
+    await router.push('/blog/new')
+    await router.isReady()
+
+    render(BlogEditorView, { global: { plugins: [router] } })
+    await fireEvent.update(await screen.findByLabelText('제목'), '새 글 제목')
+    await fireEvent.update(screen.getByLabelText('본문'), '새 글 본문')
+    await fireEvent.click(screen.getByRole('button', { name: '글 작성' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '글은 작성되었지만 생성된 주소를 확인할 수 없습니다.',
+    )
+    expect(screen.getByRole('button', { name: '글 작성' })).toBeDisabled()
+    expect(screen.getByRole('link', { name: '블로그 목록으로' })).toHaveAttribute('href', '/blog')
   })
 })

@@ -2,8 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { blogApi, type BlogPost } from '@/api/blog'
-import { ApiHttpError } from '@/api/client'
+import { BlogCreationLocationError, blogApi, type BlogPost } from '@/api/blog'
+import { ApiHttpError, ApiResponseError } from '@/api/client'
 import AsyncState from '@/components/AsyncState.vue'
 import MarkdownContent from '@/components/MarkdownContent.vue'
 import PageScaffold from '@/components/PageScaffold.vue'
@@ -22,6 +22,7 @@ const content = ref('')
 const validationError = ref('')
 const submitError = ref('')
 const isSubmitting = ref(false)
+const hasUnlocatedCreation = ref(false)
 let sequence = 0
 let controller: AbortController | null = null
 
@@ -114,7 +115,13 @@ function validate(): boolean {
 }
 
 async function submit(): Promise<void> {
-  if (isSubmitting.value || authStatus.value !== 'success' || !canEdit.value || !validate()) {
+  if (
+    isSubmitting.value ||
+    hasUnlocatedCreation.value ||
+    authStatus.value !== 'success' ||
+    !canEdit.value ||
+    !validate()
+  ) {
     return
   }
 
@@ -141,6 +148,14 @@ async function submit(): Promise<void> {
       submitError.value = '글이 없거나 수정할 권한이 없습니다.'
     } else if (error instanceof ApiHttpError && error.status === 422) {
       submitError.value = '제목 또는 본문 형식을 확인해 주세요.'
+    } else if (
+      !isEdit.value &&
+      error instanceof ApiResponseError &&
+      error.cause instanceof BlogCreationLocationError
+    ) {
+      hasUnlocatedCreation.value = true
+      submitError.value =
+        '글은 작성되었지만 생성된 주소를 확인할 수 없습니다. 목록에서 작성한 글을 확인해 주세요.'
     } else {
       submitError.value = isEdit.value
         ? '글을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.'
@@ -197,7 +212,10 @@ onBeforeUnmount(() => {
         {{ validationError }}
       </div>
       <div v-if="submitError" class="alert alert-danger" role="alert">
-        {{ submitError }}
+        <p class="mb-0">{{ submitError }}</p>
+        <RouterLink v-if="hasUnlocatedCreation" class="btn btn-sm btn-outline-danger mt-3" to="/blog">
+          블로그 목록으로
+        </RouterLink>
       </div>
 
       <div class="mb-4">
@@ -243,7 +261,11 @@ onBeforeUnmount(() => {
 
       <div class="d-flex justify-content-end gap-2 mt-4">
         <RouterLink class="btn btn-outline-secondary" :to="cancelTarget">취소</RouterLink>
-        <button class="btn btn-primary" type="submit" :disabled="isSubmitting">
+        <button
+          class="btn btn-primary"
+          type="submit"
+          :disabled="isSubmitting || hasUnlocatedCreation"
+        >
           {{ isSubmitting ? '저장 중' : isEdit ? '전체 내용 수정' : '글 작성' }}
         </button>
       </div>
