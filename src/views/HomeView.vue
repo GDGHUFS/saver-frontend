@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 import AccountCard from '@/views/home/AccountCard.vue'
 import LatestBlogCard from '@/views/home/LatestBlogCard.vue'
+import LatestNewsCard from '@/views/home/LatestNewsCard.vue'
 
 const router = useRouter()
 const query = ref('')
@@ -29,11 +30,6 @@ const services = computed<readonly Service[]>(() => [
     title: '기념일',
     description: '월별 기념일과 공휴일을 확인합니다.',
     to: '/special-days',
-  },
-  {
-    title: '뉴스',
-    description: '최신 소식을 모아 봅니다.',
-    to: '/news',
   },
 ])
 
@@ -89,6 +85,9 @@ async function submitSearch(): Promise<void> {
             <span class="text-body-secondary">{{ service.description }}</span>
           </span>
         </RouterLink>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4">
+        <LatestNewsCard />
       </div>
       <div class="col-12 col-md-6 col-lg-4">
         <LatestBlogCard />

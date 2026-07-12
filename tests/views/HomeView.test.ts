@@ -16,8 +16,13 @@ const blogApiMocks = vi.hoisted(() => ({
   getLatest: vi.fn(),
 }))
 
+const newsApiMocks = vi.hoisted(() => ({
+  getLatest: vi.fn(),
+}))
+
 vi.mock('@/api/auth', () => ({ authApi: authApiMocks }))
 vi.mock('@/api/blog', () => ({ blogApi: blogApiMocks }))
+vi.mock('@/api/news', () => ({ newsApi: newsApiMocks }))
 
 const latestPost = {
   author: {
@@ -38,6 +43,7 @@ function createHomeRouter() {
       { path: '/', component: HomeView },
       { path: '/search', name: 'search', component: { template: '<div>검색 결과</div>' } },
       { path: '/blog', name: 'blog', component: { template: '<div>블로그</div>' } },
+      { path: '/news', name: 'news', component: { template: '<div>뉴스</div>' } },
       {
         path: '/blog/author/:userId',
         name: 'blog-author',
@@ -57,6 +63,7 @@ describe('HomeView', () => {
   beforeEach(() => {
     authApiMocks.getCurrentUser.mockRejectedValue(new ApiHttpError(401, undefined))
     blogApiMocks.getLatest.mockResolvedValue([])
+    newsApiMocks.getLatest.mockResolvedValue([])
   })
 
   // 메인 검색 입력이 backend 계약과 같은 방식으로 공백을 정리해 결과 라우트로 전달하는지 보호한다.
@@ -87,7 +94,44 @@ describe('HomeView', () => {
       'href',
       '/blog/7',
     )
-    expect(screen.getByRole('link', { name: '전체 보기' })).toHaveAttribute('href', '/blog')
+    expect(
+      screen.getAllByRole('link', { name: '전체 보기' }).some((link) => link.getAttribute('href') === '/blog'),
+    ).toBe(true)
     expect(blogApiMocks.getLatest).toHaveBeenCalledWith(3, expect.any(AbortSignal))
+  })
+
+  it('메인 뉴스 카드에서 인증 없이 최신 뉴스 3개를 제공한다', async () => {
+    newsApiMocks.getLatest.mockResolvedValue([
+      {
+        author: null,
+        categories: [],
+        comments: null,
+        description: '뉴스 설명',
+        enclosureLength: null,
+        enclosureType: null,
+        enclosureUrl: null,
+        feedTitle: 'RSS',
+        guid: null,
+        guidIsPermalink: null,
+        id: 1,
+        link: 'https://example.com/news/1',
+        pubDate: '2026-07-12T09:00:00+09:00',
+        publisher: '한국외대 학보',
+        sourceName: null,
+        sourceUrl: null,
+        title: '메인 최신 뉴스',
+      },
+    ])
+    const router = createHomeRouter()
+    await router.push('/')
+    await router.isReady()
+
+    render(HomeView, { global: { plugins: [router] } })
+
+    expect(await screen.findByRole('link', { name: /메인 최신 뉴스/ })).toHaveAttribute(
+      'href',
+      'https://example.com/news/1',
+    )
+    expect(newsApiMocks.getLatest).toHaveBeenCalledWith(3, null, expect.any(AbortSignal))
   })
 })
