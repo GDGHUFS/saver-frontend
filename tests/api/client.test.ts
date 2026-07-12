@@ -47,6 +47,20 @@ describe('ApiClient', () => {
     )
   })
 
+  it('응답 헤더 계약을 검증할 수 있도록 decoder에 원본 Response를 전달한다', async () => {
+    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, { headers: { Location: '/blog/7' }, status: 201 }),
+    )
+    const client = new ApiClient({ fetchImplementation })
+
+    const location = await client.request('/blog/', {
+      decoder: (_value, response) => response.headers.get('Location'),
+      method: 'POST',
+    })
+
+    expect(location).toBe('/blog/7')
+  })
+
   it('API 오류의 상태 코드와 응답 본문을 보존한다', async () => {
     const fetchImplementation = vi.fn<typeof fetch>()
     fetchImplementation.mockResolvedValue(

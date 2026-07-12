@@ -1,4 +1,4 @@
-export type ApiDecoder<T> = (value: unknown) => T
+export type ApiDecoder<T> = (value: unknown, response: Response) => T
 
 export type ApiQuery = Record<string, boolean | number | string | null | undefined>
 
@@ -148,7 +148,7 @@ export class ApiClient {
 
       if ('decoder' in options && options.decoder !== undefined) {
         try {
-          return options.decoder(payload)
+          return options.decoder(payload, response)
         } catch (error: unknown) {
           throw new ApiResponseError('API response does not match the expected schema', {
             cause: error,
