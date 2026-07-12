@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AccountCard from '@/views/home/AccountCard.vue'
+import LatestBlogCard from '@/views/home/LatestBlogCard.vue'
 
 const router = useRouter()
 const query = ref('')
@@ -34,17 +35,13 @@ const services = computed<readonly Service[]>(() => [
     description: '최신 소식을 모아 봅니다.',
     to: '/news',
   },
-  {
-    title: '블로그',
-    description: 'Saver 사용자의 글을 읽고 작성합니다.',
-    to: '/blog',
-  },
-  {
-    title: '서비스 안내',
-    description: '서비스 소개와 개인정보처리방침을 확인합니다.',
-    to: '/about',
-  },
 ])
+
+const informationService: Service = {
+  title: '서비스 안내',
+  description: '서비스 소개와 개인정보처리방침을 확인합니다.',
+  to: '/about',
+}
 
 async function submitSearch(): Promise<void> {
   const normalizedQuery = query.value.trim().replace(/\s+/g, ' ')
@@ -90,6 +87,20 @@ async function submitSearch(): Promise<void> {
           <span class="card-body p-4">
             <strong class="d-block h5 text-body mb-2">{{ service.title }}</strong>
             <span class="text-body-secondary">{{ service.description }}</span>
+          </span>
+        </RouterLink>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4">
+        <LatestBlogCard />
+      </div>
+      <div class="col-12 col-md-6 col-lg-4">
+        <RouterLink
+          class="service-card card h-100 text-decoration-none"
+          :to="informationService.to"
+        >
+          <span class="card-body p-4">
+            <strong class="d-block h5 text-body mb-2">{{ informationService.title }}</strong>
+            <span class="text-body-secondary">{{ informationService.description }}</span>
           </span>
         </RouterLink>
       </div>

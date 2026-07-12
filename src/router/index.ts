@@ -19,6 +19,7 @@ const router = createRouter({
     { path: '/special-days', name: 'special-days', component: SpecialDaysView },
     { path: '/news', name: 'news', component: NewsView },
     { path: '/blog', name: 'blog', component: BlogView },
+    { path: '/blog/author/:userId', name: 'blog-author', component: BlogView },
     { path: '/about', name: 'about', component: AboutView },
     { path: '/privacy', name: 'privacy', component: PrivacyView },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
