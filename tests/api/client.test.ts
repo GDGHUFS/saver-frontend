@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ApiClient,
@@ -23,6 +23,10 @@ function decodeMessage(value: unknown): MessageResponse {
 }
 
 describe('ApiClient', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   // 컴포넌트가 HTTP 세부사항을 다시 처리하지 않도록 공통 API 경계의 계약을 보호한다.
   it('검증 함수를 통과한 JSON 응답만 도메인 데이터로 반환한다', async () => {
     const fetchImplementation = vi.fn<typeof fetch>()
@@ -91,5 +95,21 @@ describe('ApiClient', () => {
     const client = new ApiClient({ fetchImplementation })
 
     await expect(client.request('/health')).rejects.toBeInstanceOf(ApiNetworkError)
+  })
+
+  // Firefox처럼 네이티브 fetch가 Window 수신자를 요구해도 호출 컨텍스트가 보존되는지 보호한다.
+  it('기본 fetch를 Window 컨텍스트로 호출한다', async () => {
+    const strictWindowFetch = vi.fn(function (this: unknown): Promise<Response> {
+      if (this !== window) {
+        throw new TypeError("'fetch' called on an object that does not implement interface Window.")
+      }
+
+      return Promise.resolve(new Response(null, { status: 204 }))
+    })
+    vi.stubGlobal('fetch', strictWindowFetch)
+    const client = new ApiClient()
+
+    await expect(client.request('/auth/logout', { method: 'POST' })).resolves.toBeUndefined()
+    expect(strictWindowFetch.mock.contexts[0]).toBe(window)
   })
 })

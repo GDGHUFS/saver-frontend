@@ -101,7 +101,7 @@ export class ApiClient {
   constructor(options: ApiClientOptions = {}) {
     this.baseUrl = normalizeBaseUrl(options.baseUrl ?? '')
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 10_000
-    this.fetchImplementation = options.fetchImplementation ?? fetch
+    this.fetchImplementation = options.fetchImplementation ?? window.fetch.bind(window)
   }
 
   getUrl(path: string, query?: ApiQuery): string {
