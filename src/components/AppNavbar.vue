@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
-const brandIconUrl = `${import.meta.env.BASE_URL}favicon-32x32.png`
+const brandIconUrl = `${import.meta.env.BASE_URL}android-chrome-192x192.png`
 </script>
 
 <template>
@@ -12,11 +12,11 @@ const brandIconUrl = `${import.meta.env.BASE_URL}favicon-32x32.png`
           class="brand-icon"
           :src="brandIconUrl"
           alt=""
-          width="32"
-          height="32"
+          width="96"
+          height="96"
           aria-hidden="true"
         />
-        <span>Saver</span>
+        <span>SAVER</span>
       </RouterLink>
       <button
         class="navbar-toggler"

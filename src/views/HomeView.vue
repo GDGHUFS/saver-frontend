@@ -48,7 +48,7 @@ async function submitSearch(): Promise<void> {
 <template>
   <section class="home-intro border-bottom bg-white">
     <div class="container-xl py-5 py-md-6">
-      <h1 class="display-5 fw-bold mb-4">Saver</h1>
+      <h1 class="display-5 fw-bold mb-4">SAVER</h1>
       <form class="search-form" role="search" @submit.prevent="submitSearch">
         <label class="visually-hidden" for="portal-search">통합 검색</label>
         <div class="input-group input-group-lg shadow-sm">
