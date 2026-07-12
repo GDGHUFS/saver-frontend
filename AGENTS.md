@@ -57,12 +57,17 @@ tests/          # 핵심 사용자 흐름과 공통 로직 테스트
 
 - 모든 HTTP 요청은 `src/api/client.ts` 및 `src/api/` 아래의 endpoint 모듈에 한정한다. 컴포넌트, view, store, composable에서 `fetch`를 직접 호출하지 않는다.
 - 직접 Axios를 추가하지 않는다. 별도 합의가 없다면 브라우저 기본 `fetch`를 감싼 공통 client를 사용한다.
+- `window.fetch`처럼 호출 수신자에 의존할 수 있는 브라우저 네이티브 메서드를 변수나 클래스 필드에 저장할 때는 원래 객체에 바인딩한다. Chromium에서 우연히 동작하는 호출 방식에 의존하지 말고 Firefox를 포함한 브라우저 동작을 회귀 테스트로 보호한다.
 - API 기본 URL, 공통 헤더, JSON 파싱, timeout/취소, 오류 변환을 공통 client에서 처리한다.
 - 인증은 backend가 발급하는 HttpOnly 쿠키를 사용하므로 인증 요청에는 필요한 경우 `credentials: 'include'`를 적용한다. 토큰을 Local Storage나 JavaScript가 읽을 수 있는 쿠키에 복제하지 않는다.
+- credential CORS는 프런트엔드의 scheme, host, port가 모두 일치하는 정확한 Origin을 backend와 맞춘다. 개발 서버가 다른 포트로 자동 전환되거나 `localhost` 대신 `127.0.0.1`로 열리면 별개의 Origin이므로 실행 주소와 CORS 응답 헤더를 함께 확인한다.
+- OAuth authorize endpoint와 외부 로그인 화면은 `fetch`로 호출하지 않고 `<a>` 또는 `window.location`을 사용해 브라우저 전체를 이동시킨다. OAuth 제공자의 로그인 화면에서 발생하는 fetch CORS 오류를 backend API CORS 오류로 오인하지 않는다.
+- OAuth `code`와 `state`를 처리하고 세션 쿠키를 발급하거나 계정 연결을 해제하는 callback은 backend가 담당한다. 카카오 Redirect URI에는 backend callback을 등록하고, backend가 처리를 마친 뒤 프런트엔드로 다시 이동시킨다.
 - GET query는 `URLSearchParams`로, JSON 요청은 직렬화 가능한 명시적 DTO로 구성한다.
 - 204 응답과 JSON 응답을 구분하고, 성공이 아닌 HTTP 상태를 정상 데이터로 취급하지 않는다.
 - `openapi.json`을 API 계약의 기준으로 삼고 path, method, status code, request/response schema를 일치시킨다. 명세가 변경되면 관련 타입, 검증, mock과 테스트도 함께 갱신한다.
 - cursor나 magic code처럼 서버가 발급한 불투명한 값은 클라이언트에서 해석하거나 변경하지 않는다.
+- 예상하지 못한 API 실패를 기록할 때는 작업 이름, method/path, frontend/API Origin, 오류 종류와 상태 코드처럼 재현에 필요한 정보만 구조화한다. 쿠키, 토큰, 사용자 정보와 검증되지 않은 응답 본문은 로그에 남기지 않으며, 로그인하지 않은 사용자의 정상적인 401 같은 계약상 분기는 오류로 기록하지 않는다.
 
 ## 화면 상태와 UX
 
@@ -83,8 +88,10 @@ tests/          # 핵심 사용자 흐름과 공통 로직 테스트
 
 - 핵심 사용자 흐름과 실패 가능성이 높은 공통 로직에는 테스트를 추가한다. 테스트에는 구현 세부사항이 아니라 테스트의 의도와 보호하는 동작이 드러나는 짧은 주석을 둔다.
 - API client 테스트는 최소한 성공 응답, 대표 오류 응답, 빈 응답(204), 네트워크 실패를 다룬다.
+- API client가 감싼 브라우저 네이티브 메서드는 실제 브라우저가 요구하는 호출 컨텍스트도 테스트한다. 특히 기본 `fetch`가 `Window` 수신자로 호출되는지 보호한다.
 - API 화면 테스트는 loading, empty, error, success 상태와 재시도 또는 주요 사용자 동작을 검증한다.
 - 검색 polling, cursor pagination, 인증 분기 같은 비동기 흐름은 완료, 실패, 취소 또는 만료 경로를 검증한다.
+- endpoint 테스트는 `.env`의 API 기본 URL 유무에 따라 깨지지 않도록 전체 URL 문자열을 고정하지 말고 method와 endpoint path 계약을 검증한다. URL 조합 자체를 검증하는 테스트는 별도로 둔다.
 - 버그를 수정할 때는 가능한 경우 회귀 테스트를 먼저 추가하거나 같은 변경에 포함한다.
 - 특별한 사유가 없다면 작업 완료 전에 다음 검증을 실행한다.
   1. `npm run build`
