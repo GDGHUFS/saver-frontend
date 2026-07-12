@@ -15,6 +15,7 @@ import { runSearchPolling, SearchPollingTimeoutError } from '@/composables/searc
 import { useCurrentUser } from '@/composables/useCurrentUser'
 import type { AsyncStatus } from '@/types/async-state'
 import { getSafeExternalUrl } from '@/utils/safe-url'
+import SearchResultFavicon from '@/views/search/SearchResultFavicon.vue'
 
 type SearchViewStatus = 'idle' | AsyncStatus
 
@@ -257,7 +258,8 @@ onBeforeUnmount(() => {
 
         <ol class="list-unstyled search-results mb-5">
           <li v-for="item in displayItems" :key="`${item.url}-${item.title}`" class="search-result">
-            <div class="d-flex gap-3">
+            <div class="d-flex align-items-start gap-3">
+              <SearchResultFavicon :page-url="item.url" />
               <div class="flex-grow-1 min-width-0">
                 <p class="small text-body-secondary text-truncate mb-1">{{ item.url }}</p>
                 <h3 class="h5 mb-2">

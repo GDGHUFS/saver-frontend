@@ -79,6 +79,10 @@ describe('SearchView', () => {
       'https://example.com/result',
     )
     expect(screen.getByText('검색 결과 설명')).toBeInTheDocument()
+    expect(document.querySelector('.result-favicon-image')).toHaveAttribute(
+      'src',
+      'https://example.com/favicon.ico',
+    )
     expect(screen.getByRole('link', { name: '한국외대 뉴스' })).toHaveAttribute(
       'href',
       '/search?q=%ED%95%9C%EA%B5%AD%EC%99%B8%EB%8C%80+%EB%89%B4%EC%8A%A4',
