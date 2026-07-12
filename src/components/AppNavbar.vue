@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+
+const brandIconUrl = `${import.meta.env.BASE_URL}favicon-32x32.png`
 </script>
 
 <template>
   <nav class="navbar navbar-expand-lg bg-white border-bottom" aria-label="주요 메뉴">
     <div class="container-xl py-2">
-      <RouterLink class="navbar-brand fw-bold" to="/">Saver</RouterLink>
+      <RouterLink class="navbar-brand d-inline-flex align-items-center gap-2 fw-bold" to="/">
+        <img
+          class="brand-icon"
+          :src="brandIconUrl"
+          alt=""
+          width="32"
+          height="32"
+          aria-hidden="true"
+        />
+        <span>Saver</span>
+      </RouterLink>
       <button
         class="navbar-toggler"
         type="button"
@@ -40,6 +52,12 @@ import { RouterLink } from 'vue-router'
 <style scoped>
 .navbar-brand {
   letter-spacing: 0;
+}
+
+.brand-icon {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
 }
 
 .router-link-active:not(.navbar-brand) {
