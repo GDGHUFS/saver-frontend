@@ -10,7 +10,7 @@ const brandIconUrl = `${import.meta.env.BASE_URL}android-chrome-512x512.png`
     <section class="mb-5">
       <h1>SAVER</h1>
       <img
-          class="brand-icon"
+          class="brand-icon img-fluid"
           :src="brandIconUrl"
           alt="SAVER의 로고입니다."
           aria-hidden="true"
