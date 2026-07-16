@@ -24,9 +24,17 @@ const specialDaysApiMocks = vi.hoisted(() => ({
   getByMonth: vi.fn(),
 }))
 
+const weatherApiMocks = vi.hoisted(() => ({
+  getForecast: vi.fn(),
+}))
+
 vi.mock('@/api/auth', () => ({ authApi: authApiMocks }))
 vi.mock('@/api/blog', () => ({ blogApi: blogApiMocks }))
 vi.mock('@/api/news', () => ({ newsApi: newsApiMocks }))
+vi.mock('@/api/weather', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/api/weather')>()
+  return { ...original, weatherApi: weatherApiMocks }
+})
 vi.mock('@/api/special-days', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/api/special-days')>()
   return { ...original, specialDaysApi: specialDaysApiMocks }
@@ -73,6 +81,7 @@ describe('HomeView', () => {
     blogApiMocks.getLatest.mockResolvedValue([])
     newsApiMocks.getLatest.mockResolvedValue([])
     specialDaysApiMocks.getByMonth.mockResolvedValue([])
+    weatherApiMocks.getForecast.mockResolvedValue(null)
   })
 
   // 메인 검색 입력이 backend 계약과 같은 방식으로 공백을 정리해 결과 라우트로 전달하는지 보호한다.

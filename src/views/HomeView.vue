@@ -1,33 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AccountCard from '@/views/home/AccountCard.vue'
 import LatestBlogCard from '@/views/home/LatestBlogCard.vue'
 import LatestNewsCard from '@/views/home/LatestNewsCard.vue'
 import UpcomingSpecialDaysCard from '@/views/home/UpcomingSpecialDaysCard.vue'
+import HomeWeatherCard from '@/views/home/HomeWeatherCard.vue'
 
 const router = useRouter()
 const query = ref('')
 
-interface ServiceSummary {
+interface Service {
   description: string
   title: string
-}
-
-interface InternalService extends ServiceSummary {
   to: string
 }
-
-type Service = InternalService
-
-const services = computed<readonly Service[]>(() => [
-  {
-    title: '날씨',
-    description: '날씨 정보를 확인합니다.',
-    to: '/weather',
-  },
-])
 
 const informationService: Service = {
   title: '서비스 안내',
@@ -74,13 +62,8 @@ async function submitSearch(): Promise<void> {
       <div class="col-12 col-md-6 col-lg-4">
         <AccountCard />
       </div>
-      <div v-for="service in services" :key="service.title" class="col-12 col-md-6 col-lg-4">
-        <RouterLink class="service-card card h-100 text-decoration-none" :to="service.to">
-          <span class="card-body p-4">
-            <strong class="d-block h5 text-body mb-2">{{ service.title }}</strong>
-            <span class="text-body-secondary">{{ service.description }}</span>
-          </span>
-        </RouterLink>
+      <div class="col-12 col-md-6 col-lg-4">
+        <HomeWeatherCard />
       </div>
       <div class="col-12 col-md-6 col-lg-4">
         <UpcomingSpecialDaysCard />

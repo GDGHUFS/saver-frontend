@@ -29,7 +29,7 @@ const router = createRouter({
     { path: '/privacy', name: 'privacy', component: PrivacyView },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to) => (to.hash === '' ? { top: 0 } : { el: to.hash, top: 16 }),
 })
 
 export default router
