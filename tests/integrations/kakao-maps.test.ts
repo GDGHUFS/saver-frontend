@@ -45,6 +45,9 @@ function createMapsApi(): KakaoMapsNamespace {
 describe('Kakao Maps SDK loader', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     window.kakao = undefined
     document.getElementById('kakao-map-sdk')?.remove()
   })
@@ -55,8 +58,8 @@ describe('Kakao Maps SDK loader', () => {
     document.getElementById('kakao-map-sdk')?.remove()
   })
 
-  // 공식 동적 로딩 계약인 autoload=false와 JavaScript appkey만 사용하는지 보호한다.
-  it('추가 라이브러리 없이 SDK를 로드한 뒤 kakao.maps.load 완료를 기다린다', async () => {
+  // autoload=false에서는 스크립트 직후 load만 존재하며, 콜백에서 전체 API가 준비된다.
+  it('부트스트랩 SDK의 kakao.maps.load 완료 후 전체 지도 API를 검증한다', async () => {
     const { loadKakaoMapsSdk } = await import('@/integrations/kakao-maps')
     const loading = loadKakaoMapsSdk('javascript-key')
     const script = document.getElementById('kakao-map-sdk')
@@ -68,10 +71,37 @@ describe('Kakao Maps SDK loader', () => {
     )
     expect(script).not.toHaveAttribute('src', expect.stringContaining('libraries='))
 
-    window.kakao = { maps: createMapsApi() }
+    const initializedMaps = createMapsApi()
+    const load = vi.fn((callback: () => void) => {
+      window.kakao = { maps: initializedMaps }
+      callback()
+    })
+    window.kakao = { maps: { load } }
     script?.dispatchEvent(new Event('load'))
 
-    await expect(loading).resolves.toBe(window.kakao.maps)
+    await expect(loading).resolves.toBe(initializedMaps)
+    expect(load).toHaveBeenCalledOnce()
+    const logs = JSON.stringify(vi.mocked(console.info).mock.calls)
+    expect(logs).toContain('loader.requested')
+    expect(logs).toContain('sdk.script_preparing')
+    expect(logs).toContain('sdk.initialization_completed')
+    expect(logs).toContain(window.location.origin)
+    expect(logs).not.toContain('javascript-key')
+  })
+
+  it('load 콜백 이후에도 전체 API가 없으면 초기화 오류를 반환한다', async () => {
+    const { loadKakaoMapsSdk } = await import('@/integrations/kakao-maps')
+    const loading = loadKakaoMapsSdk('javascript-key')
+    const script = document.getElementById('kakao-map-sdk')
+    window.kakao = { maps: { load: (callback) => callback() } }
+
+    script?.dispatchEvent(new Event('load'))
+
+    await expect(loading).rejects.toMatchObject({ kind: 'initialization' })
+    const logs = JSON.stringify(vi.mocked(console.error).mock.calls)
+    expect(logs).toContain('sdk.namespace_invalid')
+    expect(logs).toContain('after_load_callback')
+    expect(logs).toContain('CustomOverlay')
   })
 
   it('SDK의 429 응답을 사용량 제한 오류로 변환한다', async () => {
@@ -86,6 +116,11 @@ describe('Kakao Maps SDK loader', () => {
 
     await expect(loading).rejects.toMatchObject({ kind: 'quota', status: 429 })
     expect(document.getElementById('kakao-map-sdk')).not.toBeInTheDocument()
+    const logs = JSON.stringify(vi.mocked(console.error).mock.calls)
+    expect(logs).toContain('sdk.script_failed')
+    expect(logs).toContain('loader.failed')
+    expect(logs).toContain('429')
+    expect(logs).not.toContain('javascript-key')
   })
 
   it('키가 없으면 외부 요청을 만들지 않고 설정 오류를 반환한다', async () => {
@@ -93,6 +128,9 @@ describe('Kakao Maps SDK loader', () => {
 
     await expect(loadKakaoMapsSdk(' ')).rejects.toMatchObject({ kind: 'configuration' })
     expect(document.getElementById('kakao-map-sdk')).not.toBeInTheDocument()
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).toContain(
+      'loader.configuration_missing',
+    )
   })
 
   it('지도 타일과 무관한 카카오 이미지 URL을 지도 오류로 취급하지 않는다', async () => {

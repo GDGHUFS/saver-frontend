@@ -18,7 +18,11 @@ interface KakaoCustomOverlay {
   setMap(map: KakaoMap | null): void
 }
 
-interface KakaoMapsNamespace {
+interface KakaoMapsLoaderNamespace {
+  load(callback: () => void): void
+}
+
+interface KakaoMapsNamespace extends KakaoMapsLoaderNamespace {
   CustomOverlay: new (options: {
     clickable?: boolean
     content: Node | string
@@ -47,11 +51,10 @@ interface KakaoMapsNamespace {
     addListener(target: KakaoMap, type: 'tilesloaded', handler: () => void): void
     removeListener(target: KakaoMap, type: 'tilesloaded', handler: () => void): void
   }
-  load(callback: () => void): void
 }
 
 interface KakaoNamespace {
-  maps: KakaoMapsNamespace
+  maps: KakaoMapsLoaderNamespace | KakaoMapsNamespace
 }
 
 interface Window {

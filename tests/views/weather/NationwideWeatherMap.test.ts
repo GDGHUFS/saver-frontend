@@ -48,6 +48,13 @@ class FakeBounds {
 
 class FakeMap {
   readonly setBounds = vi.fn()
+
+  constructor(
+    readonly _container: HTMLElement,
+    readonly options: { center: KakaoLatLng; level?: number },
+  ) {
+    mapInstances.push(this)
+  }
 }
 
 const overlayContents: Node[] = []
@@ -60,6 +67,7 @@ class FakeOverlay {
 }
 
 let tilesLoadedHandler: (() => void) | null = null
+const mapInstances: FakeMap[] = []
 
 function createMapsApi() {
   return {
@@ -85,7 +93,11 @@ function finishTileLoading(): void {
 describe('NationwideWeatherMap', () => {
   beforeEach(() => {
     mocks.loadKakaoMapsSdk.mockReset()
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     overlayContents.length = 0
+    mapInstances.length = 0
     tilesLoadedHandler = null
   })
 
@@ -103,8 +115,22 @@ describe('NationwideWeatherMap', () => {
     await waitFor(() => expect(map).toHaveAttribute('aria-busy', 'false'))
     expect(overlayContents.length).toBeGreaterThan(0)
     expect(overlayContents[0]).toHaveTextContent('27°')
+    expect(mapInstances).toHaveLength(1)
+    expect(mapInstances[0]?.options.level).toBe(12)
+    expect(mapInstances[0]?.setBounds).toHaveBeenCalledWith(
+      expect.any(FakeBounds),
+      24,
+      24,
+      24,
+      24,
+    )
     expect(document.querySelector('a[href*="map.kakao.com/link/to"]')).not.toBeInTheDocument()
     expect(screen.getByRole('list', { name: '주요 지역 날씨' })).toHaveTextContent('서울')
+    const logs = JSON.stringify(vi.mocked(console.info).mock.calls)
+    expect(logs).toContain('map.initialization_started')
+    expect(logs).toContain('map.instance_created')
+    expect(logs).toContain('map.weather_overlays_created')
+    expect(logs).toContain('map.tiles_loaded')
   })
 
   it('카카오맵이 429를 반환하면 기존 간단 지도와 제한 안내를 표시한다', async () => {
@@ -116,6 +142,12 @@ describe('NationwideWeatherMap', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(
       '카카오맵 사용량 제한에 도달해 간단 지도를 표시합니다.',
+    )
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).toContain(
+      'map.initialization_failed',
+    )
+    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).toContain(
+      'map.fallback_activated',
     )
   })
 
@@ -138,5 +170,9 @@ describe('NationwideWeatherMap', () => {
       await screen.findByRole('img', { name: /대한민국 주요 지역 현재 날씨 간단 지도/ }),
     ).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('카카오맵 사용량 제한에 도달')
+    const failureLogs = JSON.stringify(vi.mocked(console.error).mock.calls)
+    expect(failureLogs).toContain('map.resource_failed')
+    expect(failureLogs).toContain('map0.daumcdn.net')
+    expect(failureLogs).toContain('/map_2d/failed-tile.png')
   })
 })

@@ -22,16 +22,22 @@ defineProps<{
         />
       </span>
       <strong class="representative-name">{{ marker.name }}</strong>
-      <span class="text-body-secondary flex-grow-1">{{ getWeatherLabel(marker.item) }}</span>
-      <span class="fw-semibold">{{ formatTemperature(marker.item.temperature) }}</span>
+      <span class="representative-condition text-body-secondary flex-grow-1">
+        {{ getWeatherLabel(marker.item) }}
+      </span>
+      <span class="representative-temperature fw-semibold">
+        {{ formatTemperature(marker.item.temperature) }}
+      </span>
     </li>
   </ul>
 </template>
 
 <style scoped>
 .representative-list {
-  max-height: 31rem;
+  max-height: 36rem;
+  padding-inline-end: 0.75rem;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .representative-icon {
@@ -42,5 +48,22 @@ defineProps<{
 
 .representative-name {
   min-width: 2.5rem;
+}
+
+.representative-condition {
+  min-width: 0;
+}
+
+.representative-temperature {
+  flex: 0 0 auto;
+  padding-inline-end: 0.25rem;
+}
+
+@media (max-width: 991.98px) {
+  .representative-list {
+    max-height: none;
+    padding-inline-end: 0;
+    overflow-y: visible;
+  }
 }
 </style>

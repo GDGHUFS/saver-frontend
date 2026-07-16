@@ -100,6 +100,9 @@ function setGeolocation(getCurrentPosition: Geolocation['getCurrentPosition'] | 
 
 describe('WeatherView', () => {
   beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     mocks.getCurrent.mockReset().mockResolvedValue(nationwideResponse)
     mocks.getForecast.mockReset().mockResolvedValue(forecastResponse)
     mocks.loadKakaoMapsSdk.mockReset().mockRejectedValue(new KakaoMapLoadError('load'))
