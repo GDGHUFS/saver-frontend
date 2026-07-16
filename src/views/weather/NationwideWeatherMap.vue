@@ -182,25 +182,28 @@ async function initializeMap(): Promise<void> {
         nationwideMapCenter.latitude,
         nationwideMapCenter.longitude,
       ),
-      disableDoubleClick: true,
-      disableDoubleClickZoom: true,
-      draggable: false,
-      keyboardShortcuts: false,
+      disableDoubleClick: false,
+      disableDoubleClickZoom: false,
+      draggable: true,
+      keyboardShortcuts: true,
       level: nationwideMapInitialLevel,
-      scrollwheel: false,
+      scrollwheel: true,
       tileAnimation: false,
     })
     map = createdMap
+    createdMap.addControl(new loadedMaps.ZoomControl(), loadedMaps.ControlPosition.RIGHT)
     logKakaoMapEvent('info', 'map.instance_created', {
       containerHeight: mapContainer.value.clientHeight,
       containerWidth: mapContainer.value.clientWidth,
       diagnosticId,
-      draggable: false,
+      draggable: true,
       frontendOrigin: window.location.origin,
       initialLatitude: nationwideMapCenter.latitude,
       initialLevel: nationwideMapInitialLevel,
       initialLongitude: nationwideMapCenter.longitude,
-      scrollwheel: false,
+      keyboardShortcuts: true,
+      scrollwheel: true,
+      zoomControl: true,
     })
 
     const bounds = new loadedMaps.LatLngBounds()
@@ -300,9 +303,10 @@ onBeforeUnmount(() => {
         <div
           ref="mapContainer"
           class="kakao-map"
-          role="img"
-          aria-label="카카오맵으로 표시한 대한민국 주요 지역 현재 날씨"
+          role="region"
+          aria-label="확대, 축소와 이동이 가능한 대한민국 주요 지역 현재 날씨 지도"
           :aria-busy="mapStatus === 'loading'"
+          tabindex="0"
         ></div>
         <div v-if="mapStatus === 'loading'" class="map-loading" role="status">
           <span class="spinner-border text-primary" aria-hidden="true"></span>

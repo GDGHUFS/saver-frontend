@@ -65,9 +65,12 @@ function isKakaoMapsNamespace(value: unknown): value is KakaoMapsNamespace {
   return (
     isRecord(value) &&
     typeof value.CustomOverlay === 'function' &&
+    isRecord(value.ControlPosition) &&
+    'RIGHT' in value.ControlPosition &&
     typeof value.LatLng === 'function' &&
     typeof value.LatLngBounds === 'function' &&
     typeof value.Map === 'function' &&
+    typeof value.ZoomControl === 'function' &&
     typeof value.load === 'function' &&
     isRecord(value.event) &&
     typeof value.event.addListener === 'function' &&
@@ -83,9 +86,13 @@ function missingKakaoMapsMembers(value: unknown): readonly string[] {
   if (!isRecord(value)) return ['maps']
   const missing: string[] = []
   if (typeof value.CustomOverlay !== 'function') missing.push('CustomOverlay')
+  if (!isRecord(value.ControlPosition) || !('RIGHT' in value.ControlPosition)) {
+    missing.push('ControlPosition.RIGHT')
+  }
   if (typeof value.LatLng !== 'function') missing.push('LatLng')
   if (typeof value.LatLngBounds !== 'function') missing.push('LatLngBounds')
   if (typeof value.Map !== 'function') missing.push('Map')
+  if (typeof value.ZoomControl !== 'function') missing.push('ZoomControl')
   if (typeof value.load !== 'function') missing.push('load')
   if (!isRecord(value.event)) {
     missing.push('event')

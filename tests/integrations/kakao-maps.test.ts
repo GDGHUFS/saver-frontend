@@ -19,8 +19,12 @@ class FakeMap implements KakaoMap {
     },
   ) {}
 
+  addControl(): void {}
+
   setBounds(): void {}
 }
+
+class FakeZoomControl implements KakaoMapControl {}
 
 class FakeCustomOverlay implements KakaoCustomOverlay {
   constructor(_options: { content: Node | string; position: KakaoLatLng }) {}
@@ -30,10 +34,12 @@ class FakeCustomOverlay implements KakaoCustomOverlay {
 
 function createMapsApi(): KakaoMapsNamespace {
   return {
+    ControlPosition: { RIGHT: 3 },
     CustomOverlay: FakeCustomOverlay,
     LatLng: FakeLatLng,
     LatLngBounds: FakeLatLngBounds,
     Map: FakeMap,
+    ZoomControl: FakeZoomControl,
     event: {
       addListener: () => undefined,
       removeListener: () => undefined,

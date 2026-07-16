@@ -47,15 +47,26 @@ class FakeBounds {
 }
 
 class FakeMap {
+  readonly addControl = vi.fn()
   readonly setBounds = vi.fn()
 
   constructor(
     readonly _container: HTMLElement,
-    readonly options: { center: KakaoLatLng; level?: number },
+    readonly options: {
+      center: KakaoLatLng
+      disableDoubleClick?: boolean
+      disableDoubleClickZoom?: boolean
+      draggable?: boolean
+      keyboardShortcuts?: boolean
+      level?: number
+      scrollwheel?: boolean
+    },
   ) {
     mapInstances.push(this)
   }
 }
+
+class FakeZoomControl {}
 
 const overlayContents: Node[] = []
 class FakeOverlay {
@@ -71,10 +82,12 @@ const mapInstances: FakeMap[] = []
 
 function createMapsApi() {
   return {
+    ControlPosition: { RIGHT: 3 },
     CustomOverlay: FakeOverlay,
     LatLng: FakeLatLng,
     LatLngBounds: FakeBounds,
     Map: FakeMap,
+    ZoomControl: FakeZoomControl,
     event: {
       addListener: vi.fn((_target: unknown, _type: string, handler: () => void) => {
         tilesLoadedHandler = handler
@@ -103,7 +116,7 @@ describe('NationwideWeatherMap', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  it('카카오맵에 대표 지역 날씨 오버레이를 표시하고 길찾기 링크를 만들지 않는다', async () => {
+  it('확대와 이동이 가능한 카카오맵에 대표 지역 날씨를 표시한다', async () => {
     const mapsApi = createMapsApi()
     mocks.loadKakaoMapsSdk.mockResolvedValue(mapsApi)
     render(NationwideWeatherMap, { props: { items: [item] } })
@@ -111,12 +124,23 @@ describe('NationwideWeatherMap', () => {
     await waitFor(() => expect(mapsApi.event.addListener).toHaveBeenCalled())
     finishTileLoading()
 
-    const map = screen.getByRole('img', { name: '카카오맵으로 표시한 대한민국 주요 지역 현재 날씨' })
+    const map = screen.getByRole('region', {
+      name: '확대, 축소와 이동이 가능한 대한민국 주요 지역 현재 날씨 지도',
+    })
     await waitFor(() => expect(map).toHaveAttribute('aria-busy', 'false'))
+    expect(map).toHaveAttribute('tabindex', '0')
     expect(overlayContents.length).toBeGreaterThan(0)
     expect(overlayContents[0]).toHaveTextContent('27°')
     expect(mapInstances).toHaveLength(1)
+    expect(mapInstances[0]?.options).toMatchObject({
+      disableDoubleClick: false,
+      disableDoubleClickZoom: false,
+      draggable: true,
+      keyboardShortcuts: true,
+      scrollwheel: true,
+    })
     expect(mapInstances[0]?.options.level).toBe(12)
+    expect(mapInstances[0]?.addControl).toHaveBeenCalledWith(expect.any(FakeZoomControl), 3)
     expect(mapInstances[0]?.setBounds).toHaveBeenCalledWith(
       expect.any(FakeBounds),
       24,

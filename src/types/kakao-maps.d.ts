@@ -4,7 +4,12 @@ interface KakaoLatLngBounds {
   extend(position: KakaoLatLng): void
 }
 
+interface KakaoMapControl {}
+
+type KakaoControlPosition = string | number
+
 interface KakaoMap {
+  addControl(control: KakaoMapControl, position: KakaoControlPosition): void
   setBounds(
     bounds: KakaoLatLngBounds,
     paddingTop?: number,
@@ -23,6 +28,9 @@ interface KakaoMapsLoaderNamespace {
 }
 
 interface KakaoMapsNamespace extends KakaoMapsLoaderNamespace {
+  ControlPosition: {
+    RIGHT: KakaoControlPosition
+  }
   CustomOverlay: new (options: {
     clickable?: boolean
     content: Node | string
@@ -47,6 +55,7 @@ interface KakaoMapsNamespace extends KakaoMapsLoaderNamespace {
       tileAnimation?: boolean
     },
   ) => KakaoMap
+  ZoomControl: new () => KakaoMapControl
   event: {
     addListener(target: KakaoMap, type: 'tilesloaded', handler: () => void): void
     removeListener(target: KakaoMap, type: 'tilesloaded', handler: () => void): void
