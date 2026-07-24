@@ -73,7 +73,7 @@ export async function runSearchPolling(
         throw new Error('search poll response returned a different magicCode')
       }
       consecutiveFailures = 0
-      if (response.status === 'COMPLETED') {
+      if (response.status !== 'PENDING') {
         return response.result
       }
     } catch (error: unknown) {

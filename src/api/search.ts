@@ -11,6 +11,7 @@ export interface SearchResultItem {
 }
 
 export interface SearchResult {
+  aiSummary: string | null
   elapsedMilliseconds: number
   items: readonly SearchResultItem[]
   relatedSearches: readonly string[]
@@ -23,7 +24,17 @@ export interface SearchAccepted {
 
 export type SearchPollResponse =
   | { magicCode: string; status: 'PENDING' }
-  | { magicCode: string; result: SearchResult; status: 'COMPLETED' }
+  | { magicCode: string; result: SearchResult; status: 'COMPLETED' | 'PARTIAL' }
+
+type SearchBranchStatus = 'COMPLETED' | 'FAILED' | 'PENDING'
+
+interface DecodedSearchBranch<T> {
+  result: T | null
+  status: SearchBranchStatus
+}
+
+type DecodedSearchResult = Omit<SearchResult, 'aiSummary'>
+type DecodedIntelligentSearchResult = DecodedSearchResult & { answer: string }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -61,6 +72,13 @@ function decodeStatus<T extends 'COMPLETED' | 'PENDING'>(
     throw new Error(`status must be ${expected}`)
   }
   return expected
+}
+
+function decodeBranchStatus(value: unknown, field: string): SearchBranchStatus {
+  if (value !== 'COMPLETED' && value !== 'FAILED' && value !== 'PENDING') {
+    throw new Error(`${field} status is invalid`)
+  }
+  return value
 }
 
 function decodeSearchItem(value: unknown): SearchResultItem {
@@ -109,7 +127,7 @@ function decodeRelatedSearches(value: unknown): readonly string[] {
   })
 }
 
-function decodeSearchResult(value: unknown): SearchResult {
+function decodeSearchResult(value: unknown): DecodedSearchResult {
   if (!isRecord(value) || !isRecord(value.data) || !isRecord(value.meta)) {
     throw new Error('search result must contain data and meta objects')
   }
@@ -125,6 +143,58 @@ function decodeSearchResult(value: unknown): SearchResult {
     elapsedMilliseconds: value.meta.ms,
     items: decodeSearchItems(value.data.search),
     relatedSearches: decodeRelatedSearches(value.data.related_search),
+  }
+}
+
+function decodeIntelligentSearchResult(value: unknown): DecodedIntelligentSearchResult {
+  const result = decodeSearchResult(value)
+  if (!isRecord(value)) {
+    throw new Error('intelligent search result must be an object')
+  }
+
+  const answer = decodeNonEmptyString(value.answer, 'intelligent search answer')
+  if (answer.length > 20_000) {
+    throw new Error('intelligent search answer must not exceed 20000 characters')
+  }
+
+  return { ...result, answer }
+}
+
+function decodeSearchBranch<T>(
+  value: unknown,
+  field: string,
+  decodeResult: (result: unknown) => T,
+): DecodedSearchBranch<T> {
+  if (!isRecord(value)) {
+    throw new Error(`${field} search branch must be an object`)
+  }
+
+  return {
+    result: value.result === undefined || value.result === null ? null : decodeResult(value.result),
+    status: decodeBranchStatus(value.status, field),
+  }
+}
+
+function decodeCombinedSearchResult(value: unknown): SearchResult {
+  if (!isRecord(value)) {
+    throw new Error('search results must be an object')
+  }
+
+  const legacy = decodeSearchBranch(value.legacy, 'legacy', decodeSearchResult)
+  const intelligent = decodeSearchBranch(
+    value.intelligent,
+    'intelligent',
+    decodeIntelligentSearchResult,
+  )
+  const legacyResult = legacy.status === 'COMPLETED' ? legacy.result : null
+  const intelligentResult = intelligent.status === 'COMPLETED' ? intelligent.result : null
+  const displayedResult = legacyResult ?? intelligentResult
+
+  return {
+    aiSummary: intelligentResult?.answer ?? null,
+    elapsedMilliseconds: displayedResult?.elapsedMilliseconds ?? 0,
+    items: displayedResult?.items ?? [],
+    relatedSearches: displayedResult?.relatedSearches ?? [],
   }
 }
 
@@ -145,13 +215,20 @@ function decodePollResponse(value: unknown, response: Response): SearchPollRespo
 
   const magicCode = decodeMagicCode(value.magicCode)
   if (response.status === 202) {
+    if (value.status !== 'PENDING') {
+      throw new Error('search poll status must be PENDING')
+    }
+    decodeCombinedSearchResult(value.results)
     return { magicCode, status: decodeStatus(value.status, 'PENDING') }
   }
   if (response.status === 200) {
+    if (value.status !== 'COMPLETED' && value.status !== 'PARTIAL') {
+      throw new Error('completed search poll status is invalid')
+    }
     return {
       magicCode,
-      result: decodeSearchResult(value.result),
-      status: decodeStatus(value.status, 'COMPLETED'),
+      result: decodeCombinedSearchResult(value.results),
+      status: value.status,
     }
   }
   throw new Error('search poll response has an unexpected status')

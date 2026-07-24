@@ -39,6 +39,7 @@ async function renderSearch(path = '/search') {
 }
 
 const searchResult = {
+  aiSummary: '한국외대의 최신 소식과 주요 정보를 간단히 정리한 내용입니다.',
   elapsedMilliseconds: 25,
   items: [
     {
@@ -74,10 +75,19 @@ describe('SearchView', () => {
   it('route 검색어로 polling을 시작하고 완료 결과와 관련 검색어를 표시한다', async () => {
     await renderSearch('/search?q=한국외대')
 
+    const aiSummaryHeading = await screen.findByRole('heading', { name: 'AI 간단 요약' })
+    expect(screen.getByText(searchResult.aiSummary)).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: '한국외대 검색 결과' })).toHaveAttribute(
       'href',
       'https://example.com/result',
     )
+    const resultHeading = document.querySelector('#search-results-heading')
+    if (resultHeading === null) {
+      throw new Error('검색 결과 제목을 찾을 수 없습니다.')
+    }
+    expect(
+      aiSummaryHeading.compareDocumentPosition(resultHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(screen.getByText('검색 결과 설명')).toBeInTheDocument()
     expect(document.querySelector('.result-favicon-image')).toHaveAttribute(
       'src',
@@ -112,7 +122,7 @@ describe('SearchView', () => {
 
   it('빈 결과와 magicCode 만료 오류에 각각 복구 안내를 제공한다', async () => {
     mocks.runSearchPolling
-      .mockResolvedValueOnce({ ...searchResult, items: [] })
+      .mockResolvedValueOnce({ ...searchResult, aiSummary: null, items: [] })
       .mockRejectedValueOnce(new ApiHttpError(404, undefined))
     const { router } = await renderSearch('/search?q=없는검색')
 
@@ -121,6 +131,20 @@ describe('SearchView', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('검색 결과의 유효 시간이 만료되었습니다.')
     expect(screen.getByRole('button', { name: '새 검색으로 다시 시도' })).toBeInTheDocument()
+  })
+
+  it('AI 요약만 완료된 partial 결과를 빈 결과로 처리하지 않는다', async () => {
+    mocks.runSearchPolling.mockResolvedValue({
+      ...searchResult,
+      items: [],
+      relatedSearches: [],
+    })
+
+    await renderSearch('/search?q=요약검색')
+
+    expect(await screen.findByRole('heading', { name: 'AI 간단 요약' })).toBeInTheDocument()
+    expect(screen.queryByText('다른 검색어로 다시 시도해 보세요.')).not.toBeInTheDocument()
+    expect(screen.getByText('함께 표시할 일반 검색 결과가 없습니다.')).toBeInTheDocument()
   })
 
   it('검색을 취소하면 실행 중인 polling signal을 중단한다', async () => {

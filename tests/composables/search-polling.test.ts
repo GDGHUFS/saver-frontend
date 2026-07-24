@@ -4,7 +4,12 @@ import { ApiHttpError, ApiNetworkError } from '@/api/client'
 import { runSearchPolling, SearchPollingTimeoutError } from '@/composables/search-polling'
 
 const magicCode = 'A'.repeat(43)
-const result = { elapsedMilliseconds: 10, items: [], relatedSearches: [] }
+const result = {
+  aiSummary: null,
+  elapsedMilliseconds: 10,
+  items: [],
+  relatedSearches: [],
+}
 const mocks = vi.hoisted(() => ({
   getResult: vi.fn(),
   submit: vi.fn(),
@@ -41,6 +46,13 @@ describe('runSearchPolling', () => {
     expect(mocks.submit).toHaveBeenCalledTimes(1)
     expect(mocks.getResult).toHaveBeenNthCalledWith(1, magicCode, expect.any(AbortSignal))
     expect(mocks.getResult).toHaveBeenNthCalledWith(2, magicCode, expect.any(AbortSignal))
+  })
+
+  it('두 검색 분기 중 하나만 완료된 partial 결과도 반환한다', async () => {
+    mocks.getResult.mockResolvedValueOnce({ magicCode, status: 'PARTIAL', result })
+
+    await expect(runSearchPolling('검색어')).resolves.toBe(result)
+    expect(mocks.getResult).toHaveBeenCalledTimes(1)
   })
 
   it('일시적인 503과 네트워크 실패는 backoff 후 같은 작업을 다시 조회한다', async () => {

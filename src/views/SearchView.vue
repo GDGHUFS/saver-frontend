@@ -97,7 +97,8 @@ async function startSearch(query: string): Promise<void> {
     }
 
     result.value = searchResult
-    searchStatus.value = searchResult.items.length === 0 ? 'empty' : 'success'
+    searchStatus.value =
+      searchResult.items.length === 0 && searchResult.aiSummary === null ? 'empty' : 'success'
   } catch (error: unknown) {
     if (requestController.signal.aborted || requestSequence !== sequence) {
       return
@@ -248,57 +249,85 @@ onBeforeUnmount(() => {
         <p class="small mb-0">다른 검색어로 다시 시도해 보세요.</p>
       </div>
 
-      <section v-else-if="result !== null" aria-labelledby="search-results-heading">
-        <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-4">
-          <h2 id="search-results-heading" class="h5 mb-0">
-            <strong>{{ searchedQuery }}</strong> 검색 결과
-          </h2>
-          <span class="small text-body-secondary">{{ result.elapsedMilliseconds }}ms</span>
-        </div>
-
-        <ol class="list-unstyled search-results mb-5">
-          <li v-for="item in displayItems" :key="`${item.url}-${item.title}`" class="search-result">
+      <div v-else-if="result !== null">
+        <section
+          v-if="result.aiSummary !== null"
+          class="ai-summary card border-primary-subtle bg-primary-subtle mb-5"
+          aria-labelledby="ai-summary-heading"
+        >
+          <div class="card-body p-4">
             <div class="d-flex align-items-start gap-3">
-              <SearchResultFavicon :page-url="item.url" />
-              <div class="flex-grow-1 min-width-0">
-                <p class="small text-body-secondary text-truncate mb-1">{{ item.url }}</p>
-                <h3 class="h5 mb-2">
-                  <a
-                    v-if="item.safeUrl !== null"
-                    :href="item.safeUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {{ item.title }}
-                  </a>
-                  <span v-else>{{ item.title }}</span>
-                </h3>
-                <p v-if="item.snippet" class="text-body-secondary mb-0">{{ item.snippet }}</p>
+              <span class="badge rounded-pill text-bg-primary mt-1" aria-hidden="true">AI</span>
+              <div class="min-width-0">
+                <h2 id="ai-summary-heading" class="h5 mb-3">AI 간단 요약</h2>
+                <p class="ai-summary-text mb-2">{{ result.aiSummary }}</p>
+                <p class="small text-body-secondary mb-0">
+                  AI가 생성한 내용은 부정확할 수 있으니 아래 검색 결과를 함께 확인해 주세요.
+                </p>
               </div>
-              <img
-                v-if="item.safeImageUrl !== null"
-                class="search-thumbnail rounded border object-fit-cover"
-                :src="item.safeImageUrl"
-                :alt="`${item.title} 미리보기`"
-              />
             </div>
-          </li>
-        </ol>
-
-        <aside v-if="result.relatedSearches.length > 0" aria-labelledby="related-searches-heading">
-          <h2 id="related-searches-heading" class="h5 mb-3">관련 검색어</h2>
-          <div class="d-flex flex-wrap gap-2">
-            <RouterLink
-              v-for="relatedQuery in result.relatedSearches"
-              :key="relatedQuery"
-              class="btn btn-light border rounded-pill"
-              :to="{ name: 'search', query: { q: relatedQuery } }"
-            >
-              {{ relatedQuery }}
-            </RouterLink>
           </div>
-        </aside>
-      </section>
+        </section>
+
+        <section aria-labelledby="search-results-heading">
+          <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-4">
+            <h2 id="search-results-heading" class="h5 mb-0">
+              <strong>{{ searchedQuery }}</strong> 검색 결과
+            </h2>
+            <span class="small text-body-secondary">{{ result.elapsedMilliseconds }}ms</span>
+          </div>
+
+          <ol v-if="displayItems.length > 0" class="list-unstyled search-results mb-5">
+            <li
+              v-for="item in displayItems"
+              :key="`${item.url}-${item.title}`"
+              class="search-result"
+            >
+              <div class="d-flex align-items-start gap-3">
+                <SearchResultFavicon :page-url="item.url" />
+                <div class="flex-grow-1 min-width-0">
+                  <p class="small text-body-secondary text-truncate mb-1">{{ item.url }}</p>
+                  <h3 class="h5 mb-2">
+                    <a
+                      v-if="item.safeUrl !== null"
+                      :href="item.safeUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {{ item.title }}
+                    </a>
+                    <span v-else>{{ item.title }}</span>
+                  </h3>
+                  <p v-if="item.snippet" class="text-body-secondary mb-0">{{ item.snippet }}</p>
+                </div>
+                <img
+                  v-if="item.safeImageUrl !== null"
+                  class="search-thumbnail rounded border object-fit-cover"
+                  :src="item.safeImageUrl"
+                  :alt="`${item.title} 미리보기`"
+                />
+              </div>
+            </li>
+          </ol>
+          <p v-else class="text-body-secondary mb-5">
+            함께 표시할 일반 검색 결과가 없습니다.
+          </p>
+
+          <aside v-if="result.relatedSearches.length > 0" aria-labelledby="related-searches-heading">
+            <h2 id="related-searches-heading" class="h5 mb-3">관련 검색어</h2>
+            <div class="d-flex flex-wrap gap-2">
+              <RouterLink
+                v-for="relatedQuery in result.relatedSearches"
+                :key="relatedQuery"
+                class="btn btn-light border rounded-pill"
+                :to="{ name: 'search', query: { q: relatedQuery } }"
+              >
+                {{ relatedQuery }}
+              </RouterLink>
+            </div>
+          </aside>
+        </section>
+      </div>
     </template>
   </PageScaffold>
 </template>
@@ -333,6 +362,15 @@ onBeforeUnmount(() => {
 
 .search-results {
   max-width: 52rem;
+}
+
+.ai-summary {
+  max-width: 52rem;
+}
+
+.ai-summary-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .search-result {

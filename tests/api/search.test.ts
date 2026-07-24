@@ -12,19 +12,32 @@ function jsonResponse(payload: unknown, status: number): Response {
 const completedResult = {
   magicCode,
   status: 'COMPLETED',
-  result: {
-    data: {
-      search: [
-        {
-          url: 'https://example.com/result',
-          title: '검색 결과',
-          snippet: '결과 설명',
-          image: { url: 'https://example.com/image.png' },
+  results: {
+    legacy: {
+      status: 'COMPLETED',
+      result: {
+        data: {
+          search: [
+            {
+              url: 'https://example.com/result',
+              title: '검색 결과',
+              snippet: '결과 설명',
+              image: { url: 'https://example.com/image.png' },
+            },
+          ],
+          related_search: [{ title: '관련 검색어' }],
         },
-      ],
-      related_search: [{ title: '관련 검색어' }],
+        meta: { ms: 42 },
+      },
     },
-    meta: { ms: 42 },
+    intelligent: {
+      status: 'COMPLETED',
+      result: {
+        answer: '한국외대의 주요 소식을 간단히 요약한 내용입니다.',
+        data: {},
+        meta: { ms: 84 },
+      },
+    },
   },
 }
 
@@ -37,7 +50,19 @@ describe('searchApi', () => {
     const fetchImplementation = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse({ magicCode, status: 'PENDING' }, 202))
-      .mockResolvedValueOnce(jsonResponse({ magicCode, status: 'PENDING' }, 202))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            magicCode,
+            status: 'PENDING',
+            results: {
+              intelligent: { status: 'PENDING' },
+              legacy: { status: 'PENDING' },
+            },
+          },
+          202,
+        ),
+      )
       .mockResolvedValueOnce(jsonResponse(completedResult, 200))
     vi.stubGlobal('fetch', fetchImplementation)
     const { searchApi } = await import('@/api/search')
@@ -54,6 +79,7 @@ describe('searchApi', () => {
       magicCode,
       status: 'COMPLETED',
       result: {
+        aiSummary: '한국외대의 주요 소식을 간단히 요약한 내용입니다.',
         elapsedMilliseconds: 42,
         items: [
           {
@@ -84,7 +110,14 @@ describe('searchApi', () => {
         jsonResponse(
           {
             magicCode,
-            result: { data: {}, meta: { ms: 0 } },
+            status: 'PARTIAL',
+            results: {
+              intelligent: { result: null, status: 'FAILED' },
+              legacy: {
+                result: { data: {}, meta: { ms: 0 } },
+                status: 'COMPLETED',
+              },
+            },
           },
           200,
         ),
@@ -93,8 +126,61 @@ describe('searchApi', () => {
     const { searchApi } = await import('@/api/search')
 
     await expect(searchApi.getResult(magicCode)).resolves.toMatchObject({
-      result: { items: [], relatedSearches: [] },
-      status: 'COMPLETED',
+      result: { aiSummary: null, items: [], relatedSearches: [] },
+      status: 'PARTIAL',
+    })
+  })
+
+  // legacy 작업이 실패해도 intelligent 결과와 AI 요약을 최종 결과로 사용할 수 있어야 한다.
+  it('partial 응답에서 완료된 intelligent 분기를 일반 결과의 대체 데이터로 사용한다', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValue(
+        jsonResponse(
+          {
+            magicCode,
+            status: 'PARTIAL',
+            results: {
+              intelligent: {
+                result: {
+                  answer: 'AI 요약만 정상적으로 생성되었습니다.',
+                  data: {
+                    search: [
+                      {
+                        title: 'Intelligent 검색 결과',
+                        url: 'https://example.com/intelligent',
+                      },
+                    ],
+                  },
+                  meta: { ms: 51 },
+                },
+                status: 'COMPLETED',
+              },
+              legacy: { status: 'FAILED' },
+            },
+          },
+          200,
+        ),
+      ),
+    )
+    const { searchApi } = await import('@/api/search')
+
+    await expect(searchApi.getResult(magicCode)).resolves.toEqual({
+      magicCode,
+      result: {
+        aiSummary: 'AI 요약만 정상적으로 생성되었습니다.',
+        elapsedMilliseconds: 51,
+        items: [
+          {
+            imageUrl: null,
+            snippet: null,
+            title: 'Intelligent 검색 결과',
+            url: 'https://example.com/intelligent',
+          },
+        ],
+        relatedSearches: [],
+      },
+      status: 'PARTIAL',
     })
   })
 
@@ -102,7 +188,23 @@ describe('searchApi', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>().mockResolvedValue(
-        jsonResponse({ magicCode, status: 'COMPLETED', result: { data: {}, meta: { ms: -1 } } }, 200),
+        jsonResponse(
+          {
+            magicCode,
+            status: 'COMPLETED',
+            results: {
+              intelligent: {
+                result: { data: {}, meta: { ms: 1 } },
+                status: 'COMPLETED',
+              },
+              legacy: {
+                result: { data: {}, meta: { ms: 1 } },
+                status: 'COMPLETED',
+              },
+            },
+          },
+          200,
+        ),
       ),
     )
     const { searchApi } = await import('@/api/search')
