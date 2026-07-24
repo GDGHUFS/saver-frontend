@@ -23,7 +23,7 @@ export interface SearchAccepted {
 }
 
 export type SearchPollResponse =
-  | { magicCode: string; status: 'PENDING' }
+  | { magicCode: string; result?: SearchResult; status: 'PENDING' }
   | { magicCode: string; result: SearchResult; status: 'COMPLETED' | 'PARTIAL' }
 
 type SearchBranchStatus = 'COMPLETED' | 'FAILED' | 'PENDING'
@@ -31,6 +31,11 @@ type SearchBranchStatus = 'COMPLETED' | 'FAILED' | 'PENDING'
 interface DecodedSearchBranch<T> {
   result: T | null
   status: SearchBranchStatus
+}
+
+interface DecodedSearchResults {
+  intelligentResultReady: boolean
+  result: SearchResult
 }
 
 type DecodedSearchResult = Omit<SearchResult, 'aiSummary'>
@@ -175,7 +180,7 @@ function decodeSearchBranch<T>(
   }
 }
 
-function decodeCombinedSearchResult(value: unknown): SearchResult {
+function decodeSearchResults(value: unknown): DecodedSearchResults {
   if (!isRecord(value)) {
     throw new Error('search results must be an object')
   }
@@ -191,10 +196,13 @@ function decodeCombinedSearchResult(value: unknown): SearchResult {
   const displayedResult = legacyResult ?? intelligentResult
 
   return {
-    aiSummary: intelligentResult?.answer ?? null,
-    elapsedMilliseconds: displayedResult?.elapsedMilliseconds ?? 0,
-    items: displayedResult?.items ?? [],
-    relatedSearches: displayedResult?.relatedSearches ?? [],
+    intelligentResultReady: intelligentResult !== null,
+    result: {
+      aiSummary: intelligentResult?.answer ?? null,
+      elapsedMilliseconds: displayedResult?.elapsedMilliseconds ?? 0,
+      items: displayedResult?.items ?? [],
+      relatedSearches: displayedResult?.relatedSearches ?? [],
+    },
   }
 }
 
@@ -218,16 +226,24 @@ function decodePollResponse(value: unknown, response: Response): SearchPollRespo
     if (value.status !== 'PENDING') {
       throw new Error('search poll status must be PENDING')
     }
-    decodeCombinedSearchResult(value.results)
+    const results = decodeSearchResults(value.results)
+    if (results.intelligentResultReady) {
+      return {
+        magicCode,
+        result: results.result,
+        status: decodeStatus(value.status, 'PENDING'),
+      }
+    }
     return { magicCode, status: decodeStatus(value.status, 'PENDING') }
   }
   if (response.status === 200) {
     if (value.status !== 'COMPLETED' && value.status !== 'PARTIAL') {
       throw new Error('completed search poll status is invalid')
     }
+    const results = decodeSearchResults(value.results)
     return {
       magicCode,
-      result: decodeCombinedSearchResult(value.results),
+      result: results.result,
       status: value.status,
     }
   }

@@ -76,6 +76,9 @@ export async function runSearchPolling(
       if (response.status !== 'PENDING') {
         return response.result
       }
+      if (response.result !== undefined) {
+        return response.result
+      }
     } catch (error: unknown) {
       if (signal.aborted || !isRetryablePollingFailure(error)) {
         throw error

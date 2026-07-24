@@ -10,6 +10,10 @@ const result = {
   items: [],
   relatedSearches: [],
 }
+const intelligentResult = {
+  ...result,
+  aiSummary: 'Intelligent 검색이 먼저 완료한 AI 요약입니다.',
+}
 const mocks = vi.hoisted(() => ({
   getResult: vi.fn(),
   submit: vi.fn(),
@@ -53,6 +57,22 @@ describe('runSearchPolling', () => {
 
     await expect(runSearchPolling('검색어')).resolves.toBe(result)
     expect(mocks.getResult).toHaveBeenCalledTimes(1)
+  })
+
+  it('전체 상태가 pending이어도 intelligent 결과가 준비되면 polling을 끝낸다', async () => {
+    mocks.getResult
+      .mockResolvedValueOnce({ magicCode, status: 'PENDING' })
+      .mockResolvedValueOnce({
+        magicCode,
+        result: intelligentResult,
+        status: 'PENDING',
+      })
+
+    const polling = runSearchPolling('검색어')
+    await vi.advanceTimersByTimeAsync(1_000)
+
+    await expect(polling).resolves.toBe(intelligentResult)
+    expect(mocks.getResult).toHaveBeenCalledTimes(2)
   })
 
   it('일시적인 503과 네트워크 실패는 backoff 후 같은 작업을 다시 조회한다', async () => {

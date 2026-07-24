@@ -103,6 +103,89 @@ describe('searchApi', () => {
     expect(fetchImplementation.mock.calls[1]?.[0]).toMatch(new RegExp(`/search/${magicCode}$`))
   })
 
+  // 비활성화된 legacy가 계속 pending이어도 intelligent 결과가 준비되면 기다리지 않아야 한다.
+  it('202 응답에서 intelligent 완료 결과만 조기 반환한다', async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            magicCode,
+            status: 'PENDING',
+            results: {
+              intelligent: { status: 'PENDING' },
+              legacy: {
+                result: {
+                  data: {
+                    search: [
+                      {
+                        title: 'Legacy 검색 결과',
+                        url: 'https://example.com/legacy',
+                      },
+                    ],
+                  },
+                  meta: { ms: 20 },
+                },
+                status: 'COMPLETED',
+              },
+            },
+          },
+          202,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            magicCode,
+            status: 'PENDING',
+            results: {
+              intelligent: {
+                result: {
+                  answer: 'Intelligent 검색이 먼저 완료한 AI 요약입니다.',
+                  data: {
+                    search: [
+                      {
+                        title: 'Intelligent 검색 결과',
+                        url: 'https://example.com/intelligent',
+                      },
+                    ],
+                  },
+                  meta: { ms: 35 },
+                },
+                status: 'COMPLETED',
+              },
+              legacy: { status: 'PENDING' },
+            },
+          },
+          202,
+        ),
+      )
+    vi.stubGlobal('fetch', fetchImplementation)
+    const { searchApi } = await import('@/api/search')
+
+    await expect(searchApi.getResult(magicCode)).resolves.toEqual({
+      magicCode,
+      status: 'PENDING',
+    })
+    await expect(searchApi.getResult(magicCode)).resolves.toEqual({
+      magicCode,
+      result: {
+        aiSummary: 'Intelligent 검색이 먼저 완료한 AI 요약입니다.',
+        elapsedMilliseconds: 35,
+        items: [
+          {
+            imageUrl: null,
+            snippet: null,
+            title: 'Intelligent 검색 결과',
+            url: 'https://example.com/intelligent',
+          },
+        ],
+        relatedSearches: [],
+      },
+      status: 'PENDING',
+    })
+  })
+
   it('선택 필드가 생략된 빈 검색 결과를 계약에 맞게 처리한다', async () => {
     vi.stubGlobal(
       'fetch',
