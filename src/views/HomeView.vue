@@ -2,6 +2,13 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { normalizeSearchQuery } from '@/api/search'
+import {
+  getSearchModeRouteQuery,
+  SEARCH_MODE_QUERY_KEY,
+  type SearchMode,
+} from '@/types/search-mode'
+import SearchModeToggle from '@/components/SearchModeToggle.vue'
 import AccountCard from '@/views/home/AccountCard.vue'
 import LatestBlogCard from '@/views/home/LatestBlogCard.vue'
 import LatestNewsCard from '@/views/home/LatestNewsCard.vue'
@@ -10,6 +17,7 @@ import HomeWeatherCard from '@/views/home/HomeWeatherCard.vue'
 
 const router = useRouter()
 const query = ref('')
+const searchMode = ref<SearchMode>('portal')
 
 interface Service {
   description: string
@@ -24,12 +32,20 @@ const informationService: Service = {
 }
 
 async function submitSearch(): Promise<void> {
-  const normalizedQuery = query.value.trim().replace(/\s+/g, ' ')
-  if (normalizedQuery.length === 0) {
+  let normalizedQuery: string
+  try {
+    normalizedQuery = normalizeSearchQuery(query.value)
+  } catch {
     return
   }
 
-  await router.push({ name: 'search', query: { q: normalizedQuery } })
+  await router.push({
+    name: 'search',
+    query: {
+      [SEARCH_MODE_QUERY_KEY]: getSearchModeRouteQuery(searchMode.value),
+      q: normalizedQuery,
+    },
+  })
 }
 </script>
 
@@ -38,7 +54,14 @@ async function submitSearch(): Promise<void> {
     <div class="container-xl py-5 py-md-6">
       <h1 class="display-5 fw-bold mb-4">SAVER</h1>
       <form class="search-form" role="search" @submit.prevent="submitSearch">
-        <label class="visually-hidden" for="portal-search">통합 검색</label>
+        <SearchModeToggle
+          v-model="searchMode"
+          class="mb-3"
+          id-prefix="home"
+        />
+        <label class="visually-hidden" for="portal-search">
+          {{ searchMode === 'research' ? '자체 검색엔진 검색' : '통합 검색' }}
+        </label>
         <div class="input-group input-group-lg shadow-sm">
           <input
             id="portal-search"
@@ -52,6 +75,14 @@ async function submitSearch(): Promise<void> {
           />
           <button class="btn btn-primary px-4" type="submit">검색</button>
         </div>
+        <p class="small text-body-secondary mt-2 mb-0">
+          <template v-if="searchMode === 'research'">
+            로그인 없이 외대학보와 개인 블로그를 검색합니다. 포털 검색 결과와 함께 표시하지 않습니다.
+          </template>
+          <template v-else>
+            로그인 후 포털 검색과 AI 요약을 이용합니다.
+          </template>
+        </p>
       </form>
     </div>
   </section>

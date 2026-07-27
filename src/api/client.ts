@@ -4,6 +4,7 @@ export type ApiQuery = Record<string, boolean | number | string | null | undefin
 
 interface SharedRequestOptions {
   body?: unknown
+  credentials?: RequestCredentials
   headers?: HeadersInit
   method?: 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT'
   query?: ApiQuery
@@ -135,7 +136,7 @@ export class ApiClient {
     try {
       const response = await this.fetchImplementation(this.getUrl(path, options.query), {
         body,
-        credentials: 'include',
+        credentials: options.credentials ?? 'include',
         headers,
         method: options.method ?? 'GET',
         signal: controller.signal,

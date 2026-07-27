@@ -8,6 +8,7 @@ import SearchView from '@/views/SearchView.vue'
 const mocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
   getLoginUrl: vi.fn(() => '/authorize'),
+  researchSearch: vi.fn(),
   runSearchPolling: vi.fn(),
 }))
 
@@ -22,6 +23,12 @@ vi.mock('@/composables/search-polling', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/composables/search-polling')>()
   return { ...original, runSearchPolling: mocks.runSearchPolling }
 })
+
+vi.mock('@/api/research-search', () => ({
+  researchSearchApi: {
+    search: mocks.researchSearch,
+  },
+}))
 
 function createSearchRouter() {
   return createRouter({
@@ -52,6 +59,36 @@ const searchResult = {
   relatedSearches: ['한국외대 뉴스'],
 }
 
+const researchSearchResult = {
+  items: [
+    {
+      author: '외대학보 기자',
+      category: '대학보도',
+      chunk: {
+        chunkId: 244,
+        chunkIndex: 1,
+        excerpt: '도서관 이용 시간과 학습 공간을 안내합니다.',
+        heading: '도서관 이용',
+        sectionPath: '캠퍼스 생활 > 도서관',
+      },
+      documentId: 37,
+      matchedBy: ['keyword', 'dense'] as const,
+      publishedAt: '2026-07-20',
+      rank: 1,
+      score: 0.0325,
+      sourceId: 101,
+      sourceType: 'hufspress' as const,
+      title: '방학 중 도서관 이용 안내',
+      topics: ['도서관', '학사'],
+    },
+  ],
+  noResult: false,
+  normalizedQuery: '도서관',
+  query: '도서관',
+  resultCount: 1,
+  similarityThreshold: 0.35,
+}
+
 describe('SearchView', () => {
   beforeEach(() => {
     mocks.getCurrentUser.mockReset().mockResolvedValue({
@@ -60,6 +97,7 @@ describe('SearchView', () => {
       profileImage: 'https://example.com/profile.png',
     })
     mocks.runSearchPolling.mockReset().mockResolvedValue(searchResult)
+    mocks.researchSearch.mockReset().mockResolvedValue(researchSearchResult)
   })
 
   // 인증 확인 전에는 검색 API 흐름을 시작하지 않는지 보호한다.
@@ -67,9 +105,101 @@ describe('SearchView', () => {
     mocks.getCurrentUser.mockRejectedValue(new ApiHttpError(401, undefined))
     await renderSearch('/search?q=비공개검색')
 
-    expect(await screen.findByText('검색은 로그인한 사용자만 이용할 수 있습니다.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('포털 검색은 로그인한 사용자만 이용할 수 있습니다.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '카카오 로그인' })).toHaveAttribute('href', '/authorize')
     expect(mocks.runSearchPolling).not.toHaveBeenCalled()
+    expect(mocks.researchSearch).not.toHaveBeenCalled()
+  })
+
+  it('로그인하지 않아도 자체 검색엔진 결과와 자료 출처를 표시한다', async () => {
+    mocks.getCurrentUser.mockRejectedValue(new ApiHttpError(401, undefined))
+    await renderSearch('/search?engine=research&q=도서관')
+
+    expect(
+      await screen.findByRole('heading', { name: '도서관 자체 검색 결과' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '검색 자료 출처' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '개인 블로그' })).toHaveAttribute(
+      'href',
+      'https://blog.sonjaehyuk.me/',
+    )
+    expect(
+      screen
+        .getAllByRole('link', { name: '외대학보' })
+        .every((link) => link.getAttribute('href') === 'http://www.hufspress.net/'),
+    ).toBe(true)
+    expect(screen.getByRole('heading', { name: '방학 중 도서관 이용 안내' })).toBeInTheDocument()
+    expect(screen.getByText('도서관 이용 시간과 학습 공간을 안내합니다.')).toBeInTheDocument()
+    expect(screen.getByText('상대 점수 0.0325')).toBeInTheDocument()
+    expect(screen.getByText('키워드 + 의미 검색')).toBeInTheDocument()
+    expect(mocks.researchSearch).toHaveBeenCalledWith('도서관', expect.any(AbortSignal))
+    expect(mocks.runSearchPolling).not.toHaveBeenCalled()
+    expect(screen.queryByRole('heading', { name: 'AI 간단 요약' })).not.toBeInTheDocument()
+  })
+
+  it('검색 방식을 전환하면 이전 결과와 병행하지 않고 선택한 방식만 표시한다', async () => {
+    mocks.getCurrentUser.mockRejectedValue(new ApiHttpError(401, undefined))
+    const { router } = await renderSearch('/search?engine=research&q=도서관')
+    await screen.findByRole('heading', { name: '도서관 자체 검색 결과' })
+
+    await fireEvent.click(screen.getByRole('radio', { name: '포털 검색' }))
+
+    await waitFor(() => expect(router.currentRoute.value.query.engine).toBeUndefined())
+    expect(
+      await screen.findByText('포털 검색은 로그인한 사용자만 이용할 수 있습니다.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: '도서관 자체 검색 결과' }),
+    ).not.toBeInTheDocument()
+    expect(mocks.runSearchPolling).not.toHaveBeenCalled()
+
+    await fireEvent.click(screen.getByRole('radio', { name: /자체 검색엔진/ }))
+
+    expect(
+      await screen.findByRole('heading', { name: '도서관 자체 검색 결과' }),
+    ).toBeInTheDocument()
+    expect(mocks.researchSearch).toHaveBeenCalledTimes(2)
+  })
+
+  it('자체 검색의 loading과 취소 상태를 제공하고 실행 중인 요청을 중단한다', async () => {
+    let searchSignal: AbortSignal | undefined
+    mocks.researchSearch.mockImplementation(
+      (_query: string, signal?: AbortSignal) => {
+        searchSignal = signal
+        return new Promise(() => undefined)
+      },
+    )
+    await renderSearch('/search?engine=research&q=검색실험')
+
+    expect(await screen.findByText('검색 실험을 실행하고 있습니다.')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: '검색 취소' }))
+
+    expect(searchSignal?.aborted).toBe(true)
+    expect(
+      screen.getByText('검색어를 입력하면 자체 검색엔진 결과를 확인할 수 있습니다.'),
+    ).toBeInTheDocument()
+  })
+
+  it('자체 검색의 빈 결과와 API 오류에 각각 복구 안내를 제공한다', async () => {
+    mocks.researchSearch
+      .mockResolvedValueOnce({
+        ...researchSearchResult,
+        items: [],
+        noResult: true,
+        resultCount: 0,
+      })
+      .mockRejectedValueOnce(new ApiHttpError(503, undefined))
+    const { router } = await renderSearch('/search?engine=research&q=없는검색')
+
+    expect(await screen.findByText(/검색 결과가 없습니다/)).toBeInTheDocument()
+    await router.push('/search?engine=research&q=오류검색')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '자체 검색엔진을 일시적으로 사용할 수 없습니다.',
+    )
+    expect(screen.getByRole('button', { name: '새 검색으로 다시 시도' })).toBeInTheDocument()
   })
 
   it('route 검색어로 polling을 시작하고 완료 결과와 관련 검색어를 표시한다', async () => {

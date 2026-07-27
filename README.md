@@ -12,7 +12,9 @@ cp .env.example .env
 npm run dev
 ```
 
-기본 backend 주소는 `.env.example`의 `VITE_API_BASE_URL`에서 확인할 수 있습니다. 환경에 맞게 `.env`에서 변경합니다.
+기본 backend 주소는 `.env.example`의 `VITE_API_BASE_URL`에서 확인할 수 있습니다. 독립 검색엔진은
+`VITE_SEARCH_API_BASE_URL`에 별도 주소를 지정하며 인증 쿠키를 사용하지 않습니다. 환경에 맞게
+`.env`에서 변경합니다.
 
 ## 카카오 OAuth callback
 

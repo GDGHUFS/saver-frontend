@@ -100,6 +100,33 @@ describe('HomeView', () => {
     })
   })
 
+  it('자체 검색엔진을 선택하면 실험 모드를 route에 보존한다', async () => {
+    const router = createHomeRouter()
+    await router.push('/')
+    await router.isReady()
+    render(HomeView, { global: { plugins: [router] } })
+
+    await fireEvent.click(screen.getByRole('radio', { name: /자체 검색엔진/ }))
+    expect(
+      screen.getByText(
+        '로그인 없이 외대학보와 개인 블로그를 검색합니다. 포털 검색 결과와 함께 표시하지 않습니다.',
+      ),
+    ).toBeInTheDocument()
+    await fireEvent.update(
+      screen.getByRole('searchbox', { name: '자체 검색엔진 검색' }),
+      '  도서관   이용 시간  ',
+    )
+    await fireEvent.click(screen.getByRole('button', { name: '검색' }))
+
+    await waitFor(() => {
+      expect(router.currentRoute.value.query).toMatchObject({
+        engine: 'research',
+        q: '도서관 이용 시간',
+      })
+      expect(router.currentRoute.value.path).toBe('/search')
+    })
+  })
+
   it('메인 블로그 카드에서 최신 글 3개와 전체 보기 링크를 제공한다', async () => {
     blogApiMocks.getLatest.mockResolvedValue([latestPost])
     const router = createHomeRouter()

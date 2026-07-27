@@ -61,6 +61,23 @@ describe('ApiClient', () => {
     expect(location).toBe('/blog/7')
   })
 
+  it('인증이 필요 없는 독립 API에는 credential 전송을 요청별로 끌 수 있다', async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }))
+    const client = new ApiClient({ fetchImplementation })
+
+    await client.request('/search/work', {
+      credentials: 'omit',
+      method: 'POST',
+    })
+
+    expect(fetchImplementation).toHaveBeenCalledWith(
+      '/search/work',
+      expect.objectContaining({ credentials: 'omit' }),
+    )
+  })
+
   it('API 오류의 상태 코드와 응답 본문을 보존한다', async () => {
     const fetchImplementation = vi.fn<typeof fetch>()
     fetchImplementation.mockResolvedValue(
