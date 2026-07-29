@@ -10,7 +10,7 @@ const brandIconUrl = `${import.meta.env.BASE_URL}android-chrome-512x512.png`
   <PageScaffold title="서비스 소개">
     <section class="mb-5">
       <h1>SAVER</h1>
-      <section class="mb-5 card w-50 p-3">
+      <section class="mb-5 card w-75 p-3">
         <img
             class="m-3 card-img-top"
             :src="brandIconUrl"
